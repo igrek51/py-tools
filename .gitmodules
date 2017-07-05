@@ -1,0 +1,3 @@
+[submodule "encoder"]
+	path = encoder
+	url = git@bitbucket.org:igrek51/crypto-encoder.git
