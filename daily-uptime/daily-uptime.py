@@ -5,8 +5,6 @@ import os
 import time
 import argparse
 
-# TODO option modify date manually
-
 # Console text formatting characters
 class Colouring:
 	C_RESET = '\033[0m'
@@ -62,7 +60,18 @@ def start():
 	lastTime = readLastTime(filename)
 	now = time.localtime()
 
-	if sameDay(lastTime, now):
+	if args.set: # setting custom time
+		try:
+			# TODO if not matching, try to get only hours with today
+			customTime = time.strptime(args.set, LAST_TIME_FORMAT)
+			saveNewTime(customTime, filename)
+			info('Previous start time: %s' % time2str(lastTime))
+			info('Custom time saved:   %s' % time2str(now))
+		except ValueError as e:
+			error(str(e))
+			return
+
+	elif sameDay(lastTime, now):
 		# show start datetime
 		info('Start time: %s' % time2str(lastTime))
 		info('Now:        %s' % time2str(now))
@@ -121,6 +130,7 @@ def uptime(lastTime, now):
 def parseArguments():
 	parser = argparse.ArgumentParser(description='Daily uptime registering tool')
 	parser.add_argument('-o', help='output file')
+	parser.add_argument('--set', help='save custom time')
 	return parser.parse_args()
 
 
