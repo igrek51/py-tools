@@ -3,6 +3,9 @@
 
 import os
 import time
+import argparse
+
+# TODO option modify date manually
 
 # Console text formatting characters
 class Colouring:
@@ -45,12 +48,18 @@ def error(message):
 	print(T_ERROR + " " + message)
 
 	
-LAST_TIME_FILENAME = 'start'
+LAST_TIME_FILENAME_DEFAULT = 'start'
 LAST_TIME_FORMAT = '%H:%M:%S, %d.%m.%Y'
 lastTime = None
 
 def start():
-	lastTime = readLastTime()
+	args = parseArguments()
+
+	filename = LAST_TIME_FILENAME_DEFAULT
+	if args.o:
+		filename = args.o
+		
+	lastTime = readLastTime(filename)
 	now = time.localtime()
 
 	if sameDay(lastTime, now):
@@ -62,16 +71,16 @@ def start():
 		
 	else:
 		# save new day
-		saveNewTime(now)
+		saveNewTime(now, filename)
 		info('Previous start time:  %s' % time2str(lastTime))
 		info('New start time (now): %s' % time2str(now))
 
 
-def readLastTime():
-	if not os.path.isfile(LAST_TIME_FILENAME):
-		warn('not existing file: %s' % LAST_TIME_FILENAME)
+def readLastTime(filename):
+	if not os.path.isfile(filename):
+		warn('not existing file: %s' % filename)
 		return None
-	with open(LAST_TIME_FILENAME) as file:
+	with open(filename) as file:
 		content = file.read().strip()
 		try:
 			datetime = time.strptime(content, LAST_TIME_FORMAT)
@@ -80,8 +89,8 @@ def readLastTime():
 			warn(str(e))
 			return None
 
-def saveNewTime(datetime):
-	with open(LAST_TIME_FILENAME, 'w') as file:
+def saveNewTime(datetime, filename):
+	with open(filename, 'w') as file:
 		file.write(time2str(datetime))
 
 def sameDay(time1, time2):
@@ -108,5 +117,11 @@ def uptime(lastTime, now):
 		elapsed += '%02d min ' % minutes
 	elapsed += '%02d s' % seconds
 	return elapsed
+
+def parseArguments():
+	parser = argparse.ArgumentParser(description='Daily uptime registering tool')
+	parser.add_argument('-o', help='output file')
+	return parser.parse_args()
+
 
 start()
