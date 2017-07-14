@@ -7,7 +7,7 @@ Author: igrek51
 License: Beerware
 """
 
-# TODO -x - excluding mask (folders)
+# TODO absolute path if mask starts with /
 
 import sys
 import os
@@ -15,7 +15,7 @@ import subprocess
 import time
 import sets
 import hashlib
-from time import gmtime, strftime
+from time import strftime
 import fnmatch
 
 # Console text formatting characters
@@ -140,6 +140,7 @@ or shell-style wildcard patterns, which contains files to be observed
  -x, --exclude <file1> [<file2>] ['<pattern1>'] [...]\texclude masks - filenames \
 or shell-style wildcard patterns, which contains files not to be observed
  -e, --exec <command>\texecute given command when any change is detected
+ -w <workdir>\tset working directory
  -i, --interval <seconds>\tset interval between subsequent changes checks \
 (default 1 s)
  -h, --help\tdisplay this help and exit""" % sys.argv[0])
@@ -147,7 +148,7 @@ or shell-style wildcard patterns, which contains files not to be observed
 
 def currentTime():
     """Return current time as a string."""
-    return strftime("%H:%M:%S", gmtime())
+    return strftime("%H:%M:%S", time.localtime())
 
 
 class ObservedFile:
@@ -173,6 +174,7 @@ class Main:
         self.excludePatterns = []
         self.observedFiles = []
         self.recursive = True
+        self.workingDir = '.'
 
     def start(self):
         """Start application."""
@@ -200,6 +202,10 @@ class Main:
         if arg == '-i' or arg == '--interval':
             (intervalStr, args) = popArg(args)
             self.interval = int(intervalStr)
+        # working directory
+        elif arg == '-w':
+            (intervalStr, args) = popArg(args)
+            self.workingDir = intervalStr
         # execute command - everything after -e
         elif arg == '-e' or arg == '--exec':
             if not args:
@@ -247,7 +253,7 @@ class Main:
         # collection of unique relative file paths
         filePaths = sets.Set()
         # walk over all files and subfiles
-        for path, subdirs, files in os.walk('.'):
+        for path, subdirs, files in os.walk(self.workingDir):
             for file in files:
                 filePath = os.path.join(path, file)
                 # cut './' from the beginning
