@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import time
 import argparse
 
@@ -45,37 +46,41 @@ def warn(message):
 def error(message):
 	print(T_ERROR + " " + message)
 
+def fatal(message):
+	error(message)
+	sys.exit()
+
 	
 LAST_TIME_FILENAME_DEFAULT = 'start'
-LAST_TIME_FORMAT = '%H:%M:%S, %d.%m.%Y'
+LAST_DATETIME_FORMAT = '%H:%M:%S, %d.%m.%Y'
+DATE_SUFFIX_FORMAT = ', %d.%m.%Y'
 lastTime = None
 
 def start():
 	args = parseArguments()
 
 	filename = LAST_TIME_FILENAME_DEFAULT
-	if args.o:
-		filename = args.o
+	if args.out:
+		filename = args.out
 		
-	lastTime = readLastTime(filename)
 	now = time.localtime()
+	lastTime = readLastTime(filename)
 
-	if args.set: # setting custom time
-		try:
-			# TODO if not matching, try to get only hours with today
-			customTime = time.strptime(args.set, LAST_TIME_FORMAT)
-			saveNewTime(customTime, filename)
-			info('Previous start time: %s' % time2str(lastTime))
-			info('Custom time saved:   %s' % time2str(now))
-		except ValueError as e:
-			error(str(e))
-			return
+	if args.customtime: # setting custom time
+		# try to get datetime or time only with today date
+		customTime = parseDatetimeOrTime(args.customtime, now)
+		if not customTime:
+			fatal('Invalid time format: %s' % args.customtime)
+		saveNewTime(customTime, filename)
+		info('Previous start time: %s' % time2str(lastTime))
+		info('Custom time saved:   %s' % time2str(customTime))
+		info('Now:                 %s' % time2str(now))
+		info('Uptime:              %s' % uptime(customTime, now))
 
 	elif sameDay(lastTime, now):
 		# show start datetime
 		info('Start time: %s' % time2str(lastTime))
 		info('Now:        %s' % time2str(now))
-		# show uptime
 		info('Uptime:     %s' % uptime(lastTime, now))
 		
 	else:
@@ -92,8 +97,7 @@ def readLastTime(filename):
 	with open(filename) as file:
 		content = file.read().strip()
 		try:
-			datetime = time.strptime(content, LAST_TIME_FORMAT)
-			return datetime
+			return time.strptime(content, LAST_DATETIME_FORMAT)
 		except ValueError as e:
 			warn(str(e))
 			return None
@@ -111,10 +115,14 @@ def sameDay(time1, time2):
 def time2str(datetime):
 	if not datetime:
 		return None
-	return time.strftime(LAST_TIME_FORMAT, datetime)
+	return time.strftime(LAST_DATETIME_FORMAT, datetime)
 
 def uptime(lastTime, now):
 	elapsedS = int(time.mktime(now) - time.mktime(lastTime))
+	if elapsedS < 0:
+		warn('Elapsed time is less than 0')
+		return '- ' + uptime(now, lastTime)
+		
 	seconds = elapsedS % 60
 	minutes = (elapsedS // 60) % 60
 	hours = (elapsedS // 60 // 60)
@@ -127,10 +135,28 @@ def uptime(lastTime, now):
 	elapsed += '%02d s' % seconds
 	return elapsed
 
+def parseDatetime(datetimeStr, formatt):
+	try:
+		return time.strptime(datetimeStr, formatt)
+	except ValueError as e:
+		return None
+
+def parseDatetimeOrTime(datetimeStr, now):
+	t = parseDatetime(datetimeStr, LAST_DATETIME_FORMAT)
+	if not t:
+		# only time check - append today date
+		datetimeStr2 = datetimeStr + time.strftime(DATE_SUFFIX_FORMAT, now)
+		t = parseDatetime(datetimeStr2, LAST_DATETIME_FORMAT)
+	if not t:
+		# only time check - append today date and seconds
+		datetimeStr2 = datetimeStr + ':00' + time.strftime(DATE_SUFFIX_FORMAT, now)
+		t = parseDatetime(datetimeStr2, LAST_DATETIME_FORMAT)
+	return t
+
 def parseArguments():
 	parser = argparse.ArgumentParser(description='Daily uptime registering tool')
-	parser.add_argument('-o', help='output file')
-	parser.add_argument('--set', help='save custom time')
+	parser.add_argument('-o', help='output file', metavar='output-file', dest='out')
+	parser.add_argument('--set', help='save custom time (HH:MM:SS, dd.mm.YYYY or HH:M:SS)', metavar='datetime', dest='customtime')
 	return parser.parse_args()
 
 
