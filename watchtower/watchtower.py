@@ -39,7 +39,6 @@ def textColor(colorNumber):
     """Return character changing console text colour."""
     return '\033[%dm' % (30 + colorNumber)
 
-
 C_INFO = textColor(C_BLUE) + C_BOLD
 C_OK = textColor(C_GREEN) + C_BOLD
 C_WARN = textColor(C_YELLOW) + C_BOLD
@@ -102,11 +101,6 @@ def nextArg(args):
     if len(args) == 0:
         return None
     return args[0]
-
-
-def clearConsole():
-    """Clear console."""
-    shellExec('tput reset')
 
 
 def md5File(fname):
@@ -285,7 +279,6 @@ class Main:
                 changedFiles = self._findChangedFiles()
                 # if anything has been changed
                 if changedFiles:
-                    clearConsole()
                     for changedFile in changedFiles:
                         info('%s - File has been changed: %s'
                              % (currentTime(), changedFile.filePath))
