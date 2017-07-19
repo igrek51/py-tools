@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 watchtower - Tool for monitoring the changes in multiple files and executing action.
@@ -7,16 +7,14 @@ Author: igrek51
 License: Beerware
 """
 
-# TODO absolute path if mask starts with /
-
 import sys
 import os
 import subprocess
 import time
-import sets
 import hashlib
 from time import strftime
 import fnmatch
+import glob
 
 # Console text formatting characters
 C_RESET = '\033[0m'
@@ -48,29 +46,19 @@ T_OK = C_OK + '[OK]' + C_RESET
 T_WARN = C_WARN + '[warn]' + C_RESET
 T_ERROR = C_ERROR + '[ERROR]' + C_RESET
 
-
 def info(message):
-    """Print info message."""
     print(T_INFO + " " + message)
 
-
 def ok(message):
-    """Print success message."""
     print(T_OK + " " + message)
 
-
 def warn(message):
-    """Print warning message."""
     print(T_WARN + " " + message)
 
-
 def error(message):
-    """Print error message."""
     print(T_ERROR + " " + message)
 
-
-def fatalError(message):
-    """Print fatal error message and exits immediately."""
+def fatal(message):
     error(message)
     sys.exit()
 
@@ -79,7 +67,7 @@ def shellExec(cmd):
     """Execute shell command."""
     errCode = subprocess.call(cmd, shell=True)
     if errCode != 0:
-        fatalError('failed executing: %s' % cmd)
+        fatal('failed executing: %s' % cmd)
 
 
 def shellExecErrorCode(cmd):
@@ -106,7 +94,7 @@ def nextArg(args):
 def md5File(fname):
     """Return MD5 hash of file."""
     if not os.path.isfile(fname):
-        fatalError('file does not exist: %s' % fname)
+        fatal('file does not exist: %s' % fname)
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -127,14 +115,13 @@ When any change is detected a given command is executed.
 Usage:
  %s [options] -f '<files>' [...] -e <command>
 
-Options:
- -f, --files <file1> [<file2>] ['<pattern1>'] [...]\tinclude masks - filenames \
-or shell-style wildcard patterns, which contains files to be observed
-  example patterns: file1, 'dir1/*', "*.tex", 'dir2/*.py', "*"
+Optional arguments:
+ -f, --files <file1> [<file2>] ['<pattern1>'] [...]\tinclude masks - absolute or relative pathnames \
+or shell-style wildcard patterns (including recursive directories and subdirectories), which define files to be observed
+  example patterns: file1, prefix*, 'dir1/*', "*.tex", 'dir2/*.py', "*", '**', '**/*.py', '/abs/path/*', '/abs/path/**'
  -x, --exclude <file1> [<file2>] ['<pattern1>'] [...]\texclude masks - filenames \
 or shell-style wildcard patterns, which contains files not to be observed
  -e, --exec <command>\texecute given command when any change is detected
- -w <workdir>\tset working directory
  -i, --interval <seconds>\tset interval between subsequent changes checks \
 (default 1 s)
  -h, --help\tdisplay this help and exit""" % sys.argv[0])
@@ -156,6 +143,9 @@ class ObservedFile:
         self.filePath = filePath
         self.lastChecksum = None
 
+    def __str__(self):
+        return "%s:%s" % (self.filePath, self.lastChecksum)
+
 
 class Main:
     """Main logic."""
@@ -164,11 +154,9 @@ class Main:
         """Create Main."""
         self.interval = 1  # seconds between subsequent changes checks
         self.executeCmd = None
-        self.filePatterns = []
+        self.includePatterns = []
         self.excludePatterns = []
         self.observedFiles = []
-        self.recursive = True
-        self.workingDir = '.'
 
     def start(self):
         """Start application."""
@@ -196,21 +184,17 @@ class Main:
         if arg == '-i' or arg == '--interval':
             (intervalStr, args) = popArg(args)
             self.interval = int(intervalStr)
-        # working directory
-        elif arg == '-w':
-            (intervalStr, args) = popArg(args)
-            self.workingDir = intervalStr
         # execute command - everything after -e
         elif arg == '-e' or arg == '--exec':
             if not args:
-                fatalError('not given command to execute')
+                fatal('not given command to execute')
             # pop all args
             self.executeCmd = ' '.join(args)
             args = []
         # select files to observe
         elif arg == '-f' or arg == '--files':
             if nextArg(args) is None:
-                fatalError('no file patterns specified')
+                fatal('no including file patterns specified')
             '''read params until there is no param'''
             ''' or param is from another option group'''
             while True:
@@ -219,11 +203,11 @@ class Main:
                 if nextA is None or nextA.startswith('-'):
                     break
                 (pattern, args) = popArg(args)
-                self.filePatterns.append(pattern)
+                self.includePatterns.append(pattern)
         # excluded files
         elif arg == '-x' or arg == '--exclude':
             if nextArg(args) is None:
-                fatalError('no file patterns specified')
+                fatal('no excluding file patterns specified')
             '''read params until there is no param'''
             ''' or param is from another option group'''
             while True:
@@ -234,38 +218,44 @@ class Main:
                 (pattern, args) = popArg(args)
                 self.excludePatterns.append(pattern)
         else:
-            fatalError('invalid parameter: %s' % arg)
+            fatal('invalid argument: %s' % arg)
         return args
 
     def _validateArgs(self):
         if self.interval < 1:
-            fatalError('interval < 1')
-        if len(self.filePatterns) == 0:
-            fatalError('no file patterns specified')
+            fatal('interval < 1')
+        if len(self.includePatterns) == 0:
+            fatal('no file patterns specified')
 
     def _listObservedFiles(self):
-        # collection of unique relative file paths
-        filePaths = sets.Set()
-        # walk over all files and subfiles
-        for path, subdirs, files in os.walk(self.workingDir):
-            for file in files:
-                filePath = os.path.join(path, file)
-                # cut './' from the beginning
-                if filePath.startswith('./'):
-                    filePath = filePath[2:]
-                # check if file path is matching any including pattern
-                if self._isMatchingAnyPattern(filePath, self.filePatterns):
-                    # and is not matching any excluding pattern
-                    if not self._isMatchingAnyPattern(filePath, self.excludePatterns):
-                        # add only if not present already
-                        filePaths.add(filePath)
+        workdir = os.getcwd()
 
-        # create list of unique observed files
+        includedPaths = self._listFileAbsPaths(workdir, self.includePatterns)
+        excludedPaths = self._listFileAbsPaths(workdir, self.excludePatterns)
+        # get files from includedPaths but not in excludedPaths
+        filePaths = includedPaths - excludedPaths
+
+        # create list of unique relative paths
         for filePath in filePaths:
-            self.observedFiles.append(ObservedFile(filePath))
+            relativePath = os.path.relpath(filePath, workdir)
+            self.observedFiles.append(ObservedFile(relativePath))
         # validate found files
         if not self.observedFiles:
-            fatalError('no matching file found for specified patterns')
+            fatal('no matching file found for specified patterns')
+        # TEST ovserved files list
+        # for p in self.observedFiles:
+        #     print(p)
+
+    def _listFileAbsPaths(self, workdir, patterns):
+        # collection of unique absolute file paths
+        paths = set()
+        for pattern in patterns:
+            files = glob.glob(pattern, recursive=True)
+            for file in files:
+                if os.path.isfile(file):
+                    absPath = os.path.join(workdir, file)
+                    paths.add(absPath)
+        return paths
 
     def _isMatchingAnyPattern(self, filename, patterns):
         for pattern in patterns:
@@ -275,21 +265,25 @@ class Main:
 
     def _lookForChanges(self):
         try:
+            initial = True
             while True:
                 changedFiles = self._findChangedFiles()
                 # if anything has been changed
                 if changedFiles:
                     for changedFile in changedFiles:
-                        info('%s - File has been changed: %s'
-                             % (currentTime(), changedFile.filePath))
+                        if initial:
+                            info('Observed file found: %s' % changedFile.filePath)
+                        else:
+                            info('%s - File has been changed: %s' % (currentTime(), changedFile.filePath))
                     # execute given command
                     if self.executeCmd:
                         info('Executing: %s' % self.executeCmd)
                         errCode = shellExecErrorCode(self.executeCmd)
                         if errCode == 0:
-                            ok('Success')
+                            ok('') # success
                         else:
                             error('failed executing: %s' % self.executeCmd)
+                    initial = False
                 # wait some time before next check
                 time.sleep(self.interval)
 
