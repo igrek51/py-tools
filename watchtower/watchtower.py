@@ -117,7 +117,7 @@ Usage:
 
 Optional arguments:
  -f, --files <file1> [<file2>] ['<pattern1>'] [...]\tinclude masks - absolute or relative pathnames \
-or shell-style wildcard patterns (including recursive directories and subdirectories), which define files to be observed
+or shell-style wildcard patterns (including recursive directories and subdirectories), which refer to files to be observed
   example patterns: file1, prefix*, 'dir1/*', "*.tex", 'dir2/*.py', "*", '**', '**/*.py', '/abs/path/*', '/abs/path/**'
  -x, --exclude <file1> [<file2>] ['<pattern1>'] [...]\texclude masks - filenames \
 or shell-style wildcard patterns, which contains files not to be observed
