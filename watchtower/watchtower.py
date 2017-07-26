@@ -124,6 +124,7 @@ or shell-style wildcard patterns, which contains files not to be observed
  -e, --exec <command>\texecute given command when any change is detected
  -i, --interval <seconds>\tset interval between subsequent changes checks \
 (default 1 s)
+ --noinit\tdo not execute command on the initialization
  -h, --help\tdisplay this help and exit""" % sys.argv[0])
 
 
@@ -157,6 +158,7 @@ class Main:
         self.includePatterns = []
         self.excludePatterns = []
         self.observedFiles = []
+        self.firstInit = True
 
     def start(self):
         """Start application."""
@@ -191,6 +193,9 @@ class Main:
             # pop all args
             self.executeCmd = ' '.join(args)
             args = []
+        # no init
+        elif arg == '--noinit':
+            self.firstInit = False
         # select files to observe
         elif arg == '-f' or arg == '--files':
             if nextArg(args) is None:
@@ -265,25 +270,27 @@ class Main:
 
     def _lookForChanges(self):
         try:
-            initial = True
+            initialRun = True
             while True:
                 changedFiles = self._findChangedFiles()
                 # if anything has been changed
                 if changedFiles:
                     for changedFile in changedFiles:
-                        if initial:
+                        if initialRun:
                             info('Observed file found: %s' % changedFile.filePath)
                         else:
-                            info('%s - File has been changed: %s' % (currentTime(), changedFile.filePath))
+                            info('%s - File change detected: %s' % (currentTime(), changedFile.filePath))
                     # execute given command
                     if self.executeCmd:
-                        info('Executing: %s' % self.executeCmd)
-                        errCode = shellExecErrorCode(self.executeCmd)
-                        if errCode == 0:
-                            ok('') # success
-                        else:
-                            error('failed executing: %s' % self.executeCmd)
-                    initial = False
+                        # executing on initialization or next change detected
+                        if self.firstInit or not initialRun:
+                            info('Executing: %s' % self.executeCmd)
+                            errCode = shellExecErrorCode(self.executeCmd)
+                            if errCode == 0:
+                                ok('') # success
+                            else:
+                                error('failed executing: %s' % self.executeCmd)
+                    initialRun = False
                 # wait some time before next check
                 time.sleep(self.interval)
 
