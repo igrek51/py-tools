@@ -284,7 +284,8 @@ class Main:
                     if self.executeCmd:
                         # executing on initialization or next change detected
                         if self.firstInit or not initialRun:
-                            info('Executing: %s' % self.executeCmd)
+                            msg = 'First executing: %s' if initialRun else 'Executing: %s'
+                            info(msg % self.executeCmd)
                             errCode = shellExecErrorCode(self.executeCmd)
                             if errCode == 0:
                                 ok('') # success
