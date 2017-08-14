@@ -5,6 +5,8 @@ import os
 import sys
 import time
 import argparse
+import subprocess
+import re
 
 # Console text formatting characters
 class Colouring:
@@ -52,11 +54,66 @@ def fatal(message):
 
 
 
+def shellExec(cmd):
+    errCode = subprocess.call(cmd, shell=True)
+    if errCode != 0:
+        fatal('failed executing: %s' % cmd)
+
+def shellExecErrorCode(cmd):
+    return subprocess.call(cmd, shell=True)
+
+def shellGetOutput(cmd):
+    return subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+
+
 def start():
     args = parseArguments()
+    masterVolume = readMasterVolume()
+    iconName = getNotificationIcon(masterVolume)
+    summary = 'Volume'
+    body = '%d%%' % masterVolume
+    replaceNotification(iconName, summary, body)
 
+def readMasterVolume():
+    masterVolumeRegex = r'^(.*)Front (Right|Left): Playback (\d*) \[(\d+)%\] \[on\]$'
+    for line in shellGetOutput('amixer get Master').split('\n'):
+        match = re.match(masterVolumeRegex, line)
+        if match:
+            return int(match.group(4))
+    warn('Master volume could not have been read')
+    return None
 
+def getNotificationIcon(volume):
+    if volume is None:
+        return 'audio-card'
+    if volume == 0:
+        return "notification-audio-volume-off"
+    elif volume < 30:
+        return "notification-audio-volume-low"
+    elif volume < 60:
+        return "notification-audio-volume-medium"
+    else:
+        return "notification-audio-volume-high"
 
+def replaceNotification(iconName, summary, body):
+    lastNotificationId = readLastNotificationId()
+    if lastNotificationId is None:
+        lastNotificationId = 0
+    showNotification(lastNotificationId, iconName, summary, body)
+
+def readLastNotificationId():
+    lastNIdRegex = r'^\(uint32 (\d+),\)$'
+    filepath = 'lastNotification'
+    with open(filepath) as f:
+        for line in f:
+            match = re.match(lastNIdRegex, line)
+            if match:
+                return match.group(1)
+    warn('last notification id could not have been read')
+    return None
+
+def showNotification(oldNotificationId, iconName, summary, body):
+    shellExec('gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.Notify my_app_name %s %s "%s" "%s" [] {} 10 > lastNotification' % (oldNotificationId, iconName, summary, body))
 
 def parseArguments():
     parser = argparse.ArgumentParser(description='Volume notifier')
