@@ -53,7 +53,6 @@ def fatal(message):
     sys.exit()
 
 
-
 def shellExec(cmd):
     errCode = subprocess.call(cmd, shell=True)
     if errCode != 0:
@@ -66,13 +65,32 @@ def shellGetOutput(cmd):
     return subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
 
 
-def start():
-    args = parseArguments()
+def popArg(args):
+    if len(args) == 0:
+        return (None, args)
+    nextArg = args[0]
+    args = args[1:]
+    return (nextArg, args)
+
+def nextArg(args):
+    if len(args) == 0:
+        return None
+    return args[0]
+
+
+
+def updateVolume(volumeDirection, volumeStep):
+    if (volumeDirection == 1):
+        shellExec('amixer -q sset Master %d%%+' % volumeStep)
+    elif (volumeDirection == -1):
+        shellExec('amixer -q sset Master %d%%-' % volumeStep)
+
+def showCurrentVolume(lastIdFile):
     masterVolume = readMasterVolume()
     iconName = getNotificationIcon(masterVolume)
     summary = 'Volume'
     body = '%d%%' % masterVolume
-    replaceNotification(iconName, summary, body)
+    replaceNotification(lastIdFile, iconName, summary, body)
 
 def readMasterVolume():
     masterVolumeRegex = r'^(.*)Front (Right|Left): Playback (\d*) \[(\d+)%\] \[on\]$'
@@ -95,29 +113,52 @@ def getNotificationIcon(volume):
     else:
         return "notification-audio-volume-high"
 
-def replaceNotification(iconName, summary, body):
-    lastNotificationId = readLastNotificationId()
+def replaceNotification(lastIdFile, iconName, summary, body):
+    lastNotificationId = readLastNotificationId(lastIdFile)
     if lastNotificationId is None:
         lastNotificationId = 0
-    showNotification(lastNotificationId, iconName, summary, body)
+    showNotification(lastIdFile, lastNotificationId, iconName, summary, body)
 
-def readLastNotificationId():
+def readLastNotificationId(lastIdFile):
     lastNIdRegex = r'^\(uint32 (\d+),\)$'
-    filepath = 'lastNotification'
-    with open(filepath) as f:
-        for line in f:
-            match = re.match(lastNIdRegex, line)
-            if match:
-                return match.group(1)
+    try:
+        with open(lastIdFile) as f:
+            for line in f:
+                match = re.match(lastNIdRegex, line)
+                if match:
+                    return match.group(1)
+    except IOError:
+        warn('error while reading file')
     warn('last notification id could not have been read')
     return None
 
-def showNotification(oldNotificationId, iconName, summary, body):
-    shellExec('gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.Notify my_app_name %s %s "%s" "%s" [] {} 10 > lastNotification' % (oldNotificationId, iconName, summary, body))
-
-def parseArguments():
-    parser = argparse.ArgumentParser(description='Volume notifier')
-    return parser.parse_args()
+def showNotification(lastIdFile, oldNotificationId, iconName, summary, body):
+    shellExec('gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.Notify my_app_name %s %s "%s" "%s" [] {} 10 > %s' % (oldNotificationId, iconName, summary, body, lastIdFile))
 
 
-start()
+class Main:
+
+    def __init__(self):
+        self.volumeChange = 0  # change direction: +1 - up, -1 - down
+        self.VOLUME_STEP = 1
+
+    def start(self):
+        self.parseArguments()
+        updateVolume(self.volumeChange, self.VOLUME_STEP)
+        showCurrentVolume('/tmp/volumenLastId')
+
+    def parseArguments(self):
+        args = sys.argv[1:]
+        while args:
+            args = self.parseArgument(*popArg(args))
+
+    def parseArgument(self, arg, args):
+        if arg == 'up':
+            self.volumeChange = +1
+        elif arg == 'down':
+            self.volumeChange = -1
+        else:
+            fatal('invalid argument: %s' % arg)
+        return args
+
+Main().start()
