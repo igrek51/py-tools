@@ -1,6 +1,6 @@
 ### volumen
 
-Volume notification tool for Gnome, Cinnamon.
+Volume notification tool for Gnome or Cinnamon.
 Shows notifications about current volume level (without creating new notifications but replacing the previous!).
 
 ### Usage:
