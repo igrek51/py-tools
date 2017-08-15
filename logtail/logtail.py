@@ -12,8 +12,7 @@ import os
 
 
 # CONFIGURATION
-LOG_FILE = '/var/lib/solarstore/%s/log/solarapp_%s.log' # log file path (%s - app module name)
-DEFAULT_APP_NAME = 'StoreApp'
+LOG_FILE = '/var/log/console.log' # log file path
 LINES_END = '--lines=200' # number of lines from the end of file
 
 # Console text formatting characters
@@ -61,9 +60,7 @@ def sedRegexReplaceCaseI(findPattern, replacePattern):
 def highlightLogLevelRegex(logLevelName, colorChar):
 	return sedRegexReplace(" " + logLevelName + " ", " " + colorChar + logLevelName + Colouring.C_RESET + " ")
 
-HIDE_LINES_REGEX = sedRegexReplace("^(.*)pl\\.westtech\\.magazyn\\.posconnector\\.solarpos\\.updater\\.SolarPosUpdater pl\\.westtech\\.magazyn\\.posconnector\\.solarpos\\.updater\\.SolarPosUpdater\\.threadTasks\\(SolarPosUpdater\\.java:247\\)(.*)$", "")
-HIDE_LINES_REGEX += sedRegexReplace("^(.*)com\\.mchange\\.v2\\.async\\.ThreadPoolAsynchronousRunner com\\.mchange\\.v2\\.async\\.ThreadPoolAsynchronousRunner.DeadlockDetector\\.run\\(ThreadPoolAsynchronousRunner\\.java:718\\)(.*)$", "")
-HIDE_LINES_REGEX += sedRegexReplace("^(.*)org\\.quartz\\.core\\.QuartzSchedulerThread org\\.quartz\\.core\\.QuartzSchedulerThread\\.run\\(QuartzSchedulerThread\\.java:276\\)(.*)$", "")
+HIDE_LINES_REGEX = ''
 SHORT_TRACE_REGEX = sedRegexReplace(" ((\\w|\\[|\\])+\\.)*(\\w|\\[|\\]|\\/|[\\\\$])+ ((\\w|[\\\\$])+\\.)+((\\w|[<>])+)\\((\\w+)\\.java:([0-9]+)\\) +-", " " + Colouring.C_TRACE + "\\6\\(\\8:\\9\\)" + Colouring.C_RESET)
 TINY_TRACE_REGEX = sedRegexReplace(" ((\\w|\\[|\\])+\\.)*(\\w|\\[|\\]|\\/|[\\\\$])+ ((\\w|[\\\\$])+\\.)+(\\w|[<>])+\\((\\w+)\\.java:[0-9]+\\) +-", " " + Colouring.C_TRACE + "\\7:" + Colouring.C_RESET)
 NO_TRACE_REGEX = sedRegexReplace(" ((\\w|\\[|\\])+\\.)*(\\w|\\[|\\]|\\/)+ ((\\w|[\\\\$])+\\.)+(\\w|[<>])+\\(\\w+\\.java:[0-9]+\\) +-", "")
@@ -74,8 +71,7 @@ CLEAR_INFO = sedRegexReplace("^(.*)INFO(.*)$", "")
 CLEAR_WARN = sedRegexReplace("^(.*)WARN(.*)$", "")
 REMOVE_EMPTY_LINES = " -e \"/^\\s*$/d\""
 EXCEPTION_REGEX = sedRegexReplace("^\tat (.*)\\((.*)\\)$", "\\t" + Colouring.C_EXCEPTION + "at \\1" + Colouring.C_BOLD + "\\(\\2\\)" + Colouring.C_RESET)
-STARTUP_HIGHLIGHT_REGEX = sedRegexReplaceCaseI("(Server startup in [0-9]+ ms)", Colouring.C_RESET + Colouring.C_HIGHLIGHT2 + "\\1" + Colouring.C_RESET)
-STARTUP_HIGHLIGHT_REGEX += sedRegexReplaceCaseI("(Reloading Context with name .+ is completed)", Colouring.C_RESET + Colouring.C_HIGHLIGHT2 + "\\1" + Colouring.C_RESET)
+STARTUP_HIGHLIGHT_REGEX = ''
 
 LINES_ALL = '-n +0'
 LINES_NONE = '--lines=0'
@@ -126,19 +122,12 @@ class Main:
 	def __init__(self):
 		self.tailThread = None
 		self.args = self.parseArguments()
-		self.analyzeArguments()
 		self.setDefaultSettings()
 
 	def parseArguments(self):
 		parser = argparse.ArgumentParser(description='Interactive log follower with syntax highlighting and formatting')
-		parser.add_argument('--app', help='Application name')
+		# parser.add_argument('--app', help='Application name')
 		return parser.parse_args()
-
-	def analyzeArguments(self):
-		if self.args.app:
-			self.appName = self.args.app
-		else:
-			self.appName = DEFAULT_APP_NAME
 
 	def start(self):
 		try:
@@ -162,7 +151,7 @@ class Main:
 			self.fatalError('log file does not exist: %s' % self.logFile)
 
 	def buildLogFilename(self):
-		self.logFile = LOG_FILE % (self.appName, self.appName)
+		self.logFile = LOG_FILE
 		return self.logFile
 
 	def shellExec(self, cmd):
