@@ -155,8 +155,8 @@ def parseDatetimeOrTime(datetimeStr, now):
 
 def parseArguments():
 	parser = argparse.ArgumentParser(description='Daily uptime registering tool')
-	parser.add_argument('-o', help='output file', metavar='output-file', dest='out')
-	parser.add_argument('--set', help='save custom time (HH:MM:SS, dd.mm.YYYY or HH:M:SS)', metavar='datetime', dest='customtime')
+	parser.add_argument('-f', help='last time datafile ("%s" by default)' % LAST_TIME_FILENAME_DEFAULT, metavar='time-file', dest='out')
+	parser.add_argument('--set', help='save custom time ("HH:MM:SS, dd.mm.YYYY" or "HH:MM:SS" or "HH:MM")', metavar='datetime', dest='customtime')
 	return parser.parse_args()
 
 
