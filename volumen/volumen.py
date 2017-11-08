@@ -10,8 +10,7 @@ import re
 import gi
 gi.require_version('Notify', '0.7')
 from gi.repository import Notify
-
-
+import os.path
 
 # Console text formatting characters
 class Colouring:
@@ -118,7 +117,24 @@ def getNotificationIcon(volume):
 	else:
 		return "notification-audio-volume-high"
 
+def saveCurrentBody(currentFile, body):
+	f = open(currentFile, 'w')
+	f.write(body)
+	f.close()
+
+def currentMillis():
+	return int(round(time.time() * 1000))
+
 def showNotification(iconName, summary, body):
+
+	CURRENT_VOLUME_FILE = '/tmp/volumen-current'
+	
+	if os.path.isfile(CURRENT_VOLUME_FILE):
+		saveCurrentBody(CURRENT_VOLUME_FILE, body)
+		# skip - another process is displaying notification
+		return
+	saveCurrentBody(CURRENT_VOLUME_FILE, body)
+
 	Notify.init("volumen")
 	notification = Notify.Notification.new(
 		summary,
@@ -126,9 +142,24 @@ def showNotification(iconName, summary, body):
 		iconName
 	)
 	notification.show()
-	time.sleep(1)
+
+	# monitor for changes
+	start = currentMillis()
+	while(currentMillis() < start + 1000):
+		if os.path.isfile(CURRENT_VOLUME_FILE):
+			f = open(CURRENT_VOLUME_FILE, 'r')
+			newBody = f.read()
+			if body != newBody: # body changed
+				body = newBody
+				notification.update(summary, body, iconName)
+				notification.show()
+				# reset timer
+				start = currentMillis()
+		time.sleep(0.05)
+
 	notification.close()
-	# shellExec('gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.Notify my_app_name %s %s "%s" "%s" [] "{\'transient\': <\'true\'>, \'resident\': <\'false\'>}" 10 > %s' % (oldNotificationId, iconName, summary, body, lastIdFile))
+	
+	os.remove(CURRENT_VOLUME_FILE)
 
 class Main:
 
