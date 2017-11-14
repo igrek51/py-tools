@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
-# UTILITY FRAMEWORK
+# UTILITY FRAMEWORK v1.0.1
 import os
 import sys
 import re
@@ -103,8 +103,9 @@ class CommandArgRule:
 		return dispHelp
 
 class ArgumentsProcessor:
-	def __init__(self, appName):
+	def __init__(self, appName, version):
 		self._appName = appName
+		self._version = version
 		self.registeredRules = []
 
 	def bindOption(self, action, name, description=None, syntaxSuffix=None):
@@ -173,8 +174,8 @@ class ArgumentsProcessor:
 
 	def printHelp(self):
 		# autocomplete help
-		print('%s\n' % self._appName)
-		print('Usage:')
+		self.printVersion()
+		print('\nUsage:')
 		usageSyntax = sys.argv[0]
 		if self._registeredOptionsCount() > 0:
 			usageSyntax += ' [options]'
@@ -194,6 +195,12 @@ class ArgumentsProcessor:
 					print('  %s' % rule.displayHelp(syntaxPadding))
 		sys.exit()
 
+	def printVersion(self):
+		print('%s v%s' % (self._appName, self._version))
+
+# workaround for invoking help by function reference
 def printHelp(argsProcessor):
-	# workaround for invoking help by function reference
 	argsProcessor.printHelp()
+
+def printVersion(argsProcessor):
+	argsProcessor.printVersion()

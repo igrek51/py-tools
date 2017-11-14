@@ -7,7 +7,7 @@ from utilframe import *
 
 GAME_DIR = '/home/thrall/games/warcraft-3-pl/'
 LICHKING_HOME = '/home/thrall/lichking/'
-VERSION = 'v1.0.6'
+VERSION = '1.8.10'
 
 def listVoices():
 	voicesDir = getVoicesDir()
@@ -46,6 +46,37 @@ def getVoicesDir():
 	validateHomeDir()
 	return LICHKING_HOME + 'voices/'
 
+def testSound():
+	info('testing audio...')
+	playRandomVoice()
+
+def testNetwork():
+	info('Useful Linux commands (for your own purposes): ifconfig, ping, nmap, ip')
+	info('available network interfaces (up):')
+	ifconfig = shellOutput('sudo ifconfig')
+	lines = splitLines(ifconfig)
+	lines = regexFilterLines(lines, r'^([a-z0-9]+).*')
+	lines = regexReplaceLines(lines, r'^([a-z0-9]+).*', '\\1')
+	if not lines:
+		fatal('no available network interfaces')
+	for interface in lines:
+		print(interface)
+	info('testing IPv4 global DNS connectivity...')
+	shellExec('ping 8.8.8.8 -c 4')
+	info('testing global IP connectivity...')
+	shellExec('ping google.pl -c 4')
+
+def testGraphics():
+	info('testing GLX (OpenGL for X Window System)...')
+	errorCode = shellExecErrorCode('glxgears')
+	debug('glxgears error code: %d' % errorCode)
+
+def showWarcraftosInfo():
+	info('WarcraftOS v%s' % VERSION)
+	info('thrall user password: war')
+	info('root user password: war')
+	info('When launching the game, you have custom keys shortcuts (QWER) already enabled.')
+
 # ----- Commands
 def commandRunGame():
 	# set workdir
@@ -62,9 +93,8 @@ def commandRunGame():
 	#shellExec('export WINEARCH=win64')
 	#shellExec('unset WINEPREFIX')
 	errorCode = shellExecErrorCode('wine "Frozen Throne.exe" -opengl')
-	debug('Error code: %d' % errorCode)
+	debug('wine error code: %d' % errorCode)
 	info('"Jeszcze jedną kolejkę?"')
-	playVoice('pandarenbrewmaster-jeszcze-jedna-kolejke')
 
 def commandPlayVoice(argsProcessor):
 	# list available voices
@@ -84,18 +114,55 @@ def commandOpenTips(argsProcessor):
 	if tipsName == 'dota':
 		os.chdir(GAME_DIR)
 		shellExec('sublime dota-info.md')
+	elif tipsName == 'warcraftos':
+		showWarcraftosInfo()
 	else:
 		fatal('unknown tipsName: %s' % tipsName)
 
+def commandTest(argsProcessor):
+	testName = argsProcessor.popRequiredParam('testName')
+	if testName == 'audio':
+		testSound()
+	elif testName == 'network':
+		testNetwork()
+	elif testName == 'graphics':
+		testGraphics()
+	else:
+		fatal('unknown testName: %s' % testName)
+
+def commandScreen(argsProcessor):
+	if not argsProcessor.hasNextArgument():
+		# list outputs
+		xrandr = shellOutput('xrandr 2>/dev/null | grep " connected"')
+		lines = splitLines(xrandr)
+		lines = regexReplaceLines(lines, r'^([a-zA-Z0-9\-]+).*', '\\1')
+		if not lines:
+			fatal('no xrandr outputs - something\'s fucked up')
+		info('Available screens:')
+		for screenName in lines:
+			print(screenName)
+	else: # set output primary
+		screenName = argsProcessor.popArgument()
+		info('setting screen %s as primary...' % screenName)
+		shellExec('xrandr --output %s --primary' % screenName)
+		info('done')
+
 # ----- Main
 def start():
-	argsProcessor = ArgumentsProcessor('LichKing - WarcraftOS tool %s' % VERSION)
+	argsProcessor = ArgumentsProcessor('LichKing - WarcraftOS tool', VERSION)
 	argsProcessor.bindCommand(commandRunGame, ['war', 'go'], description='run the game using wine')
+	argsProcessor.bindCommand(commandTest, 'test', description='perform audio test', syntaxSuffix='audio')
+	argsProcessor.bindCommand(commandTest, 'test', description='perform graphics tests', syntaxSuffix='graphics')
+	argsProcessor.bindCommand(commandTest, 'test', description='perform network tests', syntaxSuffix='network')
+	argsProcessor.bindCommand(commandScreen, 'screen', description='list available screens')
+	argsProcessor.bindCommand(commandScreen, 'screen', description='set screen as primary', syntaxSuffix='[screenName]')
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='list available voices')
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play selected voice sound', syntaxSuffix='[voiceName]')
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play random voice sound', syntaxSuffix='random')
-	argsProcessor.bindCommand(commandOpenTips, 'tips', description='open Dota tips', syntaxSuffix='dota')
+	argsProcessor.bindCommand(commandOpenTips, 'info', description='show warcraftos tips', syntaxSuffix='warcraftos')
+	argsProcessor.bindCommand(commandOpenTips, 'info', description='open Dota tips', syntaxSuffix='dota')
 	argsProcessor.bindOption(printHelp, ['-h', '--help', 'help'], description='display this help and exit')
+	argsProcessor.bindOption(printVersion, ['-v', '--version'], description='print version number and exit')
 
 	argsProcessor.processAll()
 
