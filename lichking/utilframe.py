@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
-# UTILITY FRAMEWORK v1.0.1
+# UTILITY FRAMEWORK v1.0.2
 import os
 import sys
 import re
@@ -76,6 +76,11 @@ def regexSearch(filePath, regexMatch, groupNumber):
 			match = regexMatcher.match(line)
 			if match:
 				return match.group(groupNumber)
+
+# ----- File operations
+def readFile(filePath):
+	with open(filePath, 'r') as f:
+		return f.read()
 
 # ----- CLI arguments
 class CommandArgRule:

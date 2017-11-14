@@ -7,7 +7,8 @@ from utilframe import *
 
 GAME_DIR = '/home/thrall/games/warcraft-3-pl/'
 LICHKING_HOME = '/home/thrall/lichking/'
-VERSION = '1.8.10'
+OS_VERSION = '/home/thrall/.osversion'
+VERSION = '1.9.1'
 
 def listVoices():
 	voicesDir = getVoicesDir()
@@ -72,7 +73,7 @@ def testGraphics():
 	debug('glxgears error code: %d' % errorCode)
 
 def showWarcraftosInfo():
-	info('WarcraftOS v%s' % VERSION)
+	info('WarcraftOS v%s created by Igrek' % readFile(OS_VERSION).strip())
 	info('thrall user password: war')
 	info('root user password: war')
 	info('When launching the game, you have custom keys shortcuts (QWER) already enabled.')
@@ -159,7 +160,7 @@ def start():
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='list available voices')
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play selected voice sound', syntaxSuffix='[voiceName]')
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play random voice sound', syntaxSuffix='random')
-	argsProcessor.bindCommand(commandOpenTips, 'info', description='show warcraftos tips', syntaxSuffix='warcraftos')
+	argsProcessor.bindCommand(commandOpenTips, 'info', description='show warcraftos info', syntaxSuffix='warcraftos')
 	argsProcessor.bindCommand(commandOpenTips, 'info', description='open Dota tips', syntaxSuffix='dota')
 	argsProcessor.bindOption(printHelp, ['-h', '--help', 'help'], description='display this help and exit')
 	argsProcessor.bindOption(printVersion, ['-v', '--version'], description='print version number and exit')
