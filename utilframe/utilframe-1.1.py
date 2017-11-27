@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
-# UTILITY FRAMEWORK v1.1.1
+# UTILITY FRAMEWORK v1.1.2
 import os
 import sys
 import re
@@ -44,6 +44,9 @@ def shellOutput(cmd):
 def splitLines(inputString):
 	allLines = inputString.splitlines()
 	return filter(lambda l: len(l) > 0, allLines) # filter nonempty
+
+def split(inputString, delimiter):
+	return inputString.split(delimiter)
 
 def regexReplace(inputString, regexMatch, regexReplace):
 	regexMatcher = re.compile(regexMatch)
