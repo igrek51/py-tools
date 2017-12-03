@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
-# UTILITY FRAMEWORK v1.1.2
+# UTILITY FRAMEWORK v1.1.3
 import os
 import sys
 import re
@@ -86,11 +86,12 @@ def readFile(filePath):
 		return f.read()
 
 def listDir(path):
-	dirs = []
-	for f in os.listdir(path):
-		if os.path.isdir(f):
-			dirs.append(f)
-	return sorted(dirs)
+	return sorted(os.listdir(path))
+
+# ----- Collections helpers
+def filterList(l, condition):
+	# condition example: lambda l: len(l) > 0
+	return filter(l, condition)
 
 # ----- CLI arguments
 class CommandArgRule:
