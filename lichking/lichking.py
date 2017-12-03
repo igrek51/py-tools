@@ -1,23 +1,22 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
-from random import randint
 from utilframe import *
+from random import randint
 
 
 GAME_DIR = '/home/thrall/games/warcraft-3-pl/'
+AOE2_DIR = '/home/thrall/games/aoe2/'
 LICHKING_HOME = '/home/thrall/lichking/'
 OS_VERSION = '/home/thrall/.osversion'
-VERSION = '1.9.1'
+VERSION = '1.12.4'
 
 def listVoices():
 	voicesDir = getVoicesDir()
-	voices = []
-	for file in os.listdir(voicesDir):
-		if os.path.isfile(voicesDir + file):
-			if file.endswith('.wav'):
-				voices.append(file[:-4])
-	return sorted(voices)
+	voices = listDir(voicesDir)
+	voices = filter(lambda file: os.path.isfile(voicesDir + file), voices)
+	voices = filter(lambda file: file.endswith('.wav'), voices)
+	return map(lambda file: file[:-4], voices)
 
 def playVoice(voiceName):
 	voicesDir = getVoicesDir()
@@ -35,6 +34,7 @@ def playRandomVoice():
 	if not voices:
 		fatal('no voice available')
 	randomVoice = voices[randint(0, len(voices)-1)]
+	info('Playing voice %s...' % randomVoice)
 	playVoice(randomVoice)
 
 def validateHomeDir():
@@ -74,7 +74,7 @@ def testGraphics():
 
 def showWarcraftosInfo():
 	info('WarcraftOS v%s created by Igrek' % readFile(OS_VERSION).strip())
-	info('thrall user password: war')
+	info('thrall user has no password.')
 	info('root user password: war')
 	info('When launching the game, you have custom keys shortcuts (QWER) already enabled.')
 
@@ -97,6 +97,19 @@ def commandRunGame():
 	debug('wine error code: %d' % errorCode)
 	info('"Jeszcze jedną kolejkę?"')
 
+def commandRunAOE2():
+	os.chdir(AOE2_DIR + 'age2_x1/')
+	aoeStachuVersion = readFile(AOE2_DIR + 'stachu-version.txt')
+	info('Running Age of Empires 2 - StachuJones-%s...' % aoeStachuVersion)
+	validateHomeDir()
+	shellExec('aplay %s' % (LICHKING_HOME + 'data/stachu-2.wav'))
+	# LANG settings
+	shellExec('LANG=pl_PL.UTF-8')
+	# 32 bit wine
+	shellExec('export WINEARCH=win32')
+	errorCode = shellExecErrorCode('wine age2_x2.exe -opengl')
+	debug('wine error code: %d' % errorCode)
+
 def commandPlayVoice(argsProcessor):
 	# list available voices
 	if not argsProcessor.hasNextArgument():
@@ -111,11 +124,11 @@ def commandPlayVoice(argsProcessor):
 			playVoice(voiceName)
 
 def commandOpenTips(argsProcessor):
-	tipsName = argsProcessor.popRequiredParam('tipsName')
+	tipsName = argsProcessor.popArgument()
 	if tipsName == 'dota':
 		os.chdir(GAME_DIR)
 		shellExec('sublime dota-info.md')
-	elif tipsName == 'warcraftos':
+	elif tipsName is None or tipsName == 'warcraftos':
 		showWarcraftosInfo()
 	else:
 		fatal('unknown tipsName: %s' % tipsName)
@@ -160,8 +173,9 @@ def start():
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='list available voices')
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play selected voice sound', syntaxSuffix='[voiceName]')
 	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play random voice sound', syntaxSuffix='random')
-	argsProcessor.bindCommand(commandOpenTips, 'info', description='show warcraftos info', syntaxSuffix='warcraftos')
+	argsProcessor.bindCommand(commandOpenTips, 'info', description='show WarcraftOS info', syntaxSuffix='[warcraftos]')
 	argsProcessor.bindCommand(commandOpenTips, 'info', description='open Dota tips', syntaxSuffix='dota')
+	argsProcessor.bindCommand(commandRunAOE2, ['age', 'aoe'], description='run AOE2 using wine')
 	argsProcessor.bindOption(printHelp, ['-h', '--help', 'help'], description='display this help and exit')
 	argsProcessor.bindOption(printVersion, ['-v', '--version'], description='print version number and exit')
 
