@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# mainframe v1.2.2
+# mainframe v1.2.3
 import os
 import sys
 import re
@@ -149,72 +149,75 @@ class ArgumentsProcessor:
     def __init__(self, appName, version):
         self._appName = appName
         self._version = version
-        self.registeredRules = []
+        self._argRules = []
 
     def bindOption(self, action, name, description=None, syntaxSuffix=None):
-        self.registeredRules.append(CommandArgRule(True, action, name, description, syntaxSuffix))
+        self._argRules.append(CommandArgRule(True, action, name, description, syntaxSuffix))
 
     def bindCommand(self, action, name, description=None, syntaxSuffix=None):
-        self.registeredRules.append(CommandArgRule(False, action, name, description, syntaxSuffix))
+        self._argRules.append(CommandArgRule(False, action, name, description, syntaxSuffix))
 
-    def popArgument(self):
+    # Getting args
+    def pollNext(self):
         if not self.argsQue:
             return None
         nextArg = self.argsQue[0]
         self.argsQue = self.argsQue[1:]
         return nextArg
 
-    def nextArgument(self):
+    def peekNext(self):
         return None if not self.argsQue else self.argsQue[0]
 
-    def hasNextArgument(self):
+    def hasNext(self):
         return len(self.argsQue) > 0
 
-    def popRequiredParam(self, paramName):
-        param = self.popArgument()
+    def pollRequired(self, paramName):
+        param = self.pollNext()
         if not param:
             fatal('no %s parameter given' % paramName)
         return param
 
-    def popRemainingArguments(self):
-        remainingArgs = ' '.join(self.argsQue)
+    def pollRemaining(self, joiner=' '):
+        remainingArgs = joiner.join(self.argsQue)
         self.argsQue = []
         return remainingArgs
 
+    # Processing args
     def processAll(self):
         self.argsQue = sys.argv[1:]  # CLI arguments list
         # empty arguments list - print help
         if not self.argsQue:
             self.printHelp()
         while self.argsQue:
-            self._processArgument(self.popArgument())
-
-    def _findCommandArgRule(self, arg):
-        for rule in self.registeredRules:
-            if arg in rule.names:
-                return rule
+            self._processArgument(self.pollNext())
 
     def _processArgument(self, arg):
         # TODO first process all options, then left commands
         rule = self._findCommandArgRule(arg)
         if rule:
+            # execute action(self) or action()
             (args, _, _, _) = inspect.getargspec(rule.action)
-            if len(args) == 0:
-                rule.action()
-            else:
+            if args:
                 rule.action(self)
+            else:
+                rule.action()
         else:
             fatal('unknown argument: %s' % arg)
 
-    def _registeredOptionsCount(self):
-        return sum(1 for rule in self.registeredRules if rule.isOption)
+    def _findCommandArgRule(self, arg):
+        for rule in self._argRules:
+            if arg in rule.names:
+                return rule
 
-    def _registeredCommandsCount(self):
-        return sum(1 for rule in self.registeredRules if not rule.isOption)
+    def _optionRulesCount(self):
+        return sum(1 for rule in self._argRules if rule.isOption)
+
+    def _commandRulesCount(self):
+        return sum(1 for rule in self._argRules if not rule.isOption)
 
     def _calcMinSyntaxPadding(self):
         minSyntaxPadding = 0
-        for rule in self.registeredRules:
+        for rule in self._argRules:
             syntax = rule.displaySyntax()
             if len(syntax) > minSyntaxPadding: # min padding = max from len(syntax)
                 minSyntaxPadding = len(syntax)
@@ -225,20 +228,20 @@ class ArgumentsProcessor:
         self.printVersion()
         print('\nUsage:')
         usageSyntax = sys.argv[0]
-        if self._registeredOptionsCount() > 0:
+        if self._optionRulesCount() > 0:
             usageSyntax += ' [options]'
-        if self._registeredCommandsCount() > 0:
+        if self._commandRulesCount() > 0:
             usageSyntax += ' <command>'
         print('  %s' % usageSyntax)
         syntaxPadding = self._calcMinSyntaxPadding()
-        if self._registeredCommandsCount() > 0:
+        if self._commandRulesCount() > 0:
             print('\nCommands:')
-            for rule in self.registeredRules:
+            for rule in self._argRules:
                 if not rule.isOption:
                     print('  %s' % rule.displayHelp(syntaxPadding))
-        if self._registeredOptionsCount() > 0:
+        if self._optionRulesCount() > 0:
             print('\nOptions:')
-            for rule in self.registeredRules:
+            for rule in self._argRules:
                 if rule.isOption:
                     print('  %s' % rule.displayHelp(syntaxPadding))
         sys.exit()
