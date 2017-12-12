@@ -6,17 +6,29 @@ def test_output():
 	warn('warn')
 	error('error')
 
+def test_fatal():
+	try:
+		fatal('fatality')
+		assert False
+	except Exception:
+		assert True
+
 def test_shellExec():
 	shellExec('echo test')
+	try:
+		shellExec('dupafatality')
+		assert False
+	except Exception:
+		assert True
 	assert shellExecErrorCode('echo test') == 0
 	assert shellOutput('echo test') == 'test\n'
 
 def test_splitLines():
-	assert list(splitLines('a\nb\nc')) == ['a', 'b', 'c']
-	assert list(splitLines('\na\n\n')) == ['a']
-	assert list(splitLines('\n\n\n')) == []
-	assert list(splitLines('')) == []
-	assert list(splitLines('a\n\n\r\nb')) == ['a', 'b']
+	assert splitLines('a\nb\nc') == ['a', 'b', 'c']
+	assert splitLines('\na\n\n') == ['a']
+	assert splitLines('\n\n\n') == []
+	assert splitLines('') == []
+	assert splitLines('a\n\n\r\nb') == ['a', 'b']
 
 def test_split():
 	assert split('a b c', ' ') == ['a', 'b', 'c']
@@ -46,3 +58,32 @@ def test_input23():
 	sys.stdin = open('test/res/inputs')
 	assert input23() == 'in1'
 	assert input23('prompt') == 'in2'
+
+def test_inputRequired():
+	sys.stdin = open('test/res/inputRequired')
+	assert inputRequired('required: ') == 'valid'
+
+def test_readFile():
+	assert readFile('test/res/readme') == 'Readme\n123'
+
+def test_saveFile():
+	saveFile('test/res/saveme', 'dupa\n123')
+	assert readFile('test/res/saveme') == 'dupa\n123'
+	saveFile('test/res/saveme', '')
+	assert readFile('test/res/saveme') == ''
+
+def test_listDir():
+	assert listDir('test/res/listme') == ['afile', 'dir', 'zlast', 'zlastdir']
+
+def test_workdir():
+	setWorkdir('/')
+	assert getWorkdir() == '/'
+	setWorkdir('/home/')
+	assert getWorkdir() == '/home'
+
+def test_filterList():
+	assert filterList(lambda e: len(e) <= 3, ['a', '123', '12345']) == ['a', '123']
+
+
+
+

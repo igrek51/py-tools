@@ -1,12 +1,13 @@
 #!/usr/bin/python
 
-# MAINFRAME v1.2.2
+# mainframe v1.2.2
 import os
 import sys
 import re
 import subprocess
 import glob
 import inspect
+from builtins import bytes
 
 # ----- Output
 def debug(message):
@@ -42,7 +43,7 @@ def shellOutput(cmd):
 # ----- String operations
 def splitLines(inputString):
     allLines = inputString.splitlines()
-    return filter(lambda l: len(l) > 0, allLines) # filter nonempty
+    return list(filter(lambda l: len(l) > 0, allLines)) # filter nonempty
 
 def split(inputString, delimiter):
     return inputString.split(delimiter)
@@ -98,7 +99,7 @@ def inputRequired(prompt):
 # ----- File operations
 def readFile(filePath):
     with open(filePath, 'rb') as f:
-        return f.read()
+        return f.read().decode('utf-8')
 
 def saveFile(filePath, content):
     f = open(filePath, 'wb')
@@ -115,9 +116,9 @@ def getWorkdir():
     return os.getcwd()
 
 # ----- Collections helpers
-def filterList(l, condition):
+def filterList(condition, lst):
     # condition example: lambda l: len(l) > 0
-    return filter(l, condition)
+    return list(filter(condition, lst))
 
 # ----- CLI arguments
 class CommandArgRule:
