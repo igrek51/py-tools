@@ -8,9 +8,9 @@ def start():
 		if os.path.isdir(d):
 			os.chdir(d)
 			info('Repository: %s' % d)
-			debug('pulling...')
+			debug('pulling %s...' % d)
 			shellExec('git pull')
-			debug('git status:')
+			debug('git status - %s...' % d)
 			shellExec('git status')
 			os.chdir('..')
 
