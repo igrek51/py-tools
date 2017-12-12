@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# MAINFRAME v1.2.1
+# MAINFRAME v1.2.2
 import os
 import sys
 import re
@@ -53,7 +53,7 @@ def regexReplace(inputString, regexMatch, regexReplace):
 
 def regexMatch(inputString, regexMatch):
     regexMatcher = re.compile(regexMatch)
-    return regexMatcher.match(inputString)
+    return bool(regexMatcher.match(inputString))
 
 def regexReplaceLines(lines, regexMatch, regexReplace):
     regexMatcher = re.compile(regexMatch)
@@ -71,7 +71,7 @@ def regexFilterLines(lines, regexMatch):
             filtered.append(line)
     return filtered
 
-def regexSearch(filePath, regexMatch, groupNumber):
+def regexSearchFile(filePath, regexMatch, groupNumber):
     regexMatcher = re.compile(regexMatch)
     with open(filePath) as f:
         for line in f:
@@ -79,7 +79,7 @@ def regexSearch(filePath, regexMatch, groupNumber):
             if match:
                 return match.group(groupNumber)
 
-def input23(prompt):
+def input23(prompt=None):
     """raw input compatible with python 2 and 3"""
     try:
        return raw_input(prompt) # python2
@@ -97,22 +97,22 @@ def inputRequired(prompt):
 
 # ----- File operations
 def readFile(filePath):
-    with open(filePath, 'r') as f:
+    with open(filePath, 'rb') as f:
         return f.read()
 
-def saveFile(filename, content):
-    f = open(filename, 'wb')
+def saveFile(filePath, content):
+    f = open(filePath, 'wb')
     f.write(bytes(content, 'utf-8'))
     f.close()
 
-def cd(workdir):
-    os.chdir(workdir)
-
-def pwd():
-    return os.getcwd()
-
 def listDir(path):
     return sorted(os.listdir(path))
+
+def setWorkdir(workdir):
+    os.chdir(workdir)
+
+def getWorkdir():
+    return os.getcwd()
 
 # ----- Collections helpers
 def filterList(l, condition):
