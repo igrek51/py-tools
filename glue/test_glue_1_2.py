@@ -84,6 +84,18 @@ def test_workdir():
 def test_filterList():
     assert filterList(lambda e: len(e) <= 3, ['a', '123', '12345']) == ['a', '123']
 
+# CommandArgRule
+def test_CommandArgRule():
+    assert CommandArgRule(True, None, 'name', 'description', 'syntaxSuffix').displayNames() == 'name'
+    assert CommandArgRule(True, None, ['name1', 'name2'], 'description', 'syntaxSuffix').displayNames() == 'name1, name2'
+    assert CommandArgRule(True, None, ['name1', 'name2'], 'description', None).displaySyntax() == 'name1, name2'
+    assert CommandArgRule(True, None, ['name1', 'name2'], 'description', '<suffix>').displaySyntax() == 'name1, name2 <suffix>'
+    assert CommandArgRule(True, None, ['name1', 'name2'], 'description', ' <suffix>').displaySyntax() == 'name1, name2 <suffix>'
+    assert CommandArgRule(True, None, ['name'], 'description', None).displayHelp(5) == 'name  - description'
+    assert CommandArgRule(True, None, ['name'], 'description', None).displayHelp(3) == 'name - description'
+    assert CommandArgRule(True, None, ['name'], 'description', '<suffix>').displayHelp(3) == 'name <suffix> - description'
+    assert CommandArgRule(True, None, ['name'], 'description', '<s>').displayHelp(10) == 'name <s>   - description'
 
+# ArgumentsProcessor
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 """
 glue v1.2.3
-Common Utilities Toolkit compatible with Python 2 and 3
+Common Utilities Toolkit compatible with Python 2.7 and 3
 
 Author: igrek51
 License: Beerware
@@ -155,6 +155,8 @@ class ArgumentsProcessor:
         self._appName = appName
         self._version = version
         self._argRules = []
+        self._argsQue = sys.argv[1:] # CLI arguments list
+        self._argsOffset = 0
 
     def bindOption(self, action, name, description=None, syntaxSuffix=None):
         self._argRules.append(CommandArgRule(True, action, name, description, syntaxSuffix))
@@ -164,40 +166,63 @@ class ArgumentsProcessor:
 
     # Getting args
     def pollNext(self):
-        if not self.argsQue:
+        if not self.hasNext():
             return None
-        nextArg = self.argsQue[0]
-        self.argsQue = self.argsQue[1:]
+        nextArg = self._argsQue[self._argsOffset]
+        del self._argsQue[self._argsOffset]
         return nextArg
 
     def peekNext(self):
-        return None if not self.argsQue else self.argsQue[0]
+        if not self.hasNext():
+            return None
+        return self._argsQue[self._argsOffset]
 
     def hasNext(self):
-        return len(self.argsQue) > 0
+        if not self._argsQue:
+            return False
+        return len(self._argsQue) > self._argsOffset
 
-    def pollRequired(self, paramName):
+    def pollNextRequired(self, paramName):
         param = self.pollNext()
         if not param:
             fatal('no %s parameter given' % paramName)
         return param
 
     def pollRemaining(self, joiner=' '):
-        remainingArgs = joiner.join(self.argsQue)
-        self.argsQue = []
+        beginning = self._argsQue[:self._argsOffset]
+        ending = self._argsQue[self._argsOffset:]
+        remainingArgs = joiner.join(ending)
+        self._argsQue = beginning
         return remainingArgs
 
     # Processing args
     def processAll(self):
-        self.argsQue = sys.argv[1:]  # CLI arguments list
         # empty arguments list - print help
-        if not self.argsQue:
+        if not self._argsQue:
             self.printHelp()
-        while self.argsQue:
+        # first process all options
+        self.processOptions()
+        # then process the rest of commands
+        self._argsOffset = 0
+        while self.hasNext():
             self._processArgument(self.pollNext())
 
+    def processOptions(self):
+        self._argsOffset = 0
+        while self.hasNext():
+            nextArg = self.peekNext()
+            if self._isArgOption(nextArg):
+                self._processArgument(self.pollNext())
+            else:
+                self._argsOffset += 1
+
+    def _isArgOption(self, arg):
+        rule = self._findCommandArgRule(arg)
+        if rule:
+            return rule.isOption()
+        return False
+
     def _processArgument(self, arg):
-        # TODO first process all options, then left commands
         rule = self._findCommandArgRule(arg)
         if rule:
             # execute action(self) or action()
@@ -214,6 +239,7 @@ class ArgumentsProcessor:
             if arg in rule.names:
                 return rule
 
+    # autogenerating help output
     def _optionRulesCount(self):
         return sum(1 for rule in self._argRules if rule.isOption)
 
@@ -229,7 +255,7 @@ class ArgumentsProcessor:
         return minSyntaxPadding
 
     def printHelp(self):
-        # autocomplete help
+        # autogenerate help
         self.printVersion()
         print('\nUsage:')
         usageSyntax = sys.argv[0]
