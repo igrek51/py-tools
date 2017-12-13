@@ -1,6 +1,10 @@
 #!/usr/bin/python
+"""
+glue v1.2.3
 
-# mainframe v1.2.3
+Author: igrek51
+License: Beerware
+"""
 import os
 import sys
 import re
