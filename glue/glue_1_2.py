@@ -219,7 +219,7 @@ class ArgumentsProcessor:
     def _isArgOption(self, arg):
         rule = self._findCommandArgRule(arg)
         if rule:
-            return rule.isOption()
+            return rule.isOption
         return False
 
     def _processArgument(self, arg):
