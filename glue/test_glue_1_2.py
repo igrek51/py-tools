@@ -1,4 +1,5 @@
 from glue_1_2 import *
+from mock import patch
 
 def test_output():
     debug('debug')
@@ -97,5 +98,39 @@ def test_CommandArgRule():
     assert CommandArgRule(True, None, ['name'], 'description', '<s>').displayHelp(10) == 'name <s>   - description'
 
 # ArgumentsProcessor
+def mockArgs(argsList):
+    if not argsList:
+        argsList = []
+    return patch.object(sys, 'argv', ['glue'] + argsList)
 
+def command1():
+    print(None)
+
+def command2(argsProcessor):
+    print('dupa')
+
+def test_ArgumentsProcessor():
+    # basic execution with no args
+    with mockArgs(None):
+        try:
+            argsProcessor = ArgumentsProcessor('appName', '1.0.1')
+            argsProcessor.processAll()
+            assert False
+        except SystemExit:
+            # prints help and exit
+            assert True
+
+    with mockArgs(None):
+        try:
+            argsProcessor = ArgumentsProcessor('appName', '1.0.1')
+            argsProcessor.bindCommand(command1, 'command1', description='description1')
+            argsProcessor.bindCommand(command2, ['command2', 'command22'], description='description2', syntaxSuffix='<param>')
+            argsProcessor.bindOption(printHelp, ['-h', '--help'], description='display this help and exit')
+            argsProcessor.bindOption(printVersion, ['-v', '--version'], description='print version and exit')
+            argsProcessor.processAll()
+            assert False
+        except SystemExit:
+            # prints help and exit
+            assert True
+    
 
