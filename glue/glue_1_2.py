@@ -1,6 +1,7 @@
 #!/usr/bin/python
 """
 glue v1.2.3
+Common Utilities Toolkit compatible with Python 2 and 3
 
 Author: igrek51
 License: Beerware
