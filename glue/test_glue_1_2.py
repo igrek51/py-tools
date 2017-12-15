@@ -146,7 +146,7 @@ def sampleProcessor1():
     argsProcessor.bindOption(command4Remaining, '--remain', description='join strings')
     return argsProcessor
 
-def test_ArgumentsProcessor():
+def test_ArgumentsProcessor_noArg():
     # basic execution with no args
     with mockArgs(None):
         try:
@@ -156,6 +156,8 @@ def test_ArgumentsProcessor():
         except SystemExit as e:
             # prints help and exit
             assert str(e) == '0'
+
+def test_ArgumentsProcessor_bindingsSetup():
     # test bindings
     with mockArgs(None):
         try:
@@ -164,6 +166,8 @@ def test_ArgumentsProcessor():
         except SystemExit as e:
             # prints help and exit
             assert str(e) == '0'
+
+def test_ArgumentsProcessor_optionsFirst():
     # test processing options first
     with mockArgs(['-h', 'dupa']):
         try:
@@ -172,6 +176,8 @@ def test_ArgumentsProcessor():
         except SystemExit as e:
             # prints help and exit
             assert str(e) == '0'
+
+def test_ArgumentsProcessor_noNextArg():
     # test lack of next argument
     with mockArgs(['command2']):
         try:
@@ -180,11 +186,12 @@ def test_ArgumentsProcessor():
         except RuntimeError as e:
             # prints help and exit
             assert str(e) == 'Fatal error: no param parameter given'
-    # test lack of next argument
     with mockArgs(['command33']):
         with mockOutput() as fakeOutput:
             sampleProcessor1().processAll()
             assert fakeOutput.getvalue() == 'None\n'
+
+def test_ArgumentsProcessor_givenParam():
     # test given param
     with mockArgs(['command3', 'dupa']):
         with mockOutput() as fakeOutput:
@@ -194,11 +201,15 @@ def test_ArgumentsProcessor():
         with mockOutput() as fakeOutput:
             sampleProcessor1().processAll()
             assert fakeOutput.getvalue() == 'dupa\n'
+
+def test_ArgumentsProcessor_binding():
     # test binding with no argProcessor
     with mockArgs(['command1']):
         with mockOutput() as fakeOutput:
             sampleProcessor1().processAll()
             assert fakeOutput.getvalue() == 'None\n'
+
+def test_ArgumentsProcessor_pollRemaining():
     # test pollRemaining():
     with mockArgs(['remain']):
         with mockOutput() as fakeOutput:
@@ -212,6 +223,8 @@ def test_ArgumentsProcessor():
         with mockOutput() as fakeOutput:
             sampleProcessor1().processAll()
             assert fakeOutput.getvalue() == '1 abc d\n'
+
+def test_ArgumentsProcessor_optionsPrecedence():
     # test options precedence
     with mockArgs(['-v', 'command1']):
         with mockOutput() as fakeOutput:
@@ -229,11 +242,15 @@ def test_ArgumentsProcessor():
         with mockOutput() as fakeOutput:
             sampleProcessor1().processOptions()
             assert fakeOutput.getvalue() == '1 abc\n'
+
+def test_ArgumentsProcessor_poll():
     # test polling
     with mockArgs(['poll', '123', '456', '789']):
         with mockOutput() as fakeOutput:
             sampleProcessor1().processAll()
             assert fakeOutput.getvalue() == '123\n456\n789\n'
+
+def test_ArgumentsProcessor_removingArgs():
     # test removing parameters
     with mockArgs(['remain', 'jasna', 'dupa', '--remain', '1', 'abc']):
         with mockOutput() as fakeOutput:
@@ -248,6 +265,8 @@ def test_ArgumentsProcessor():
             argsProcessor.processOptions()
             argsProcessor.processAll()
             assert fakeOutput.getvalue() == '1 abc\njasna dupa\n'
+
+def test_ArgumentsProcessor_unknownArg():
     # test unknown argument
     with mockArgs(['dupa']):
         try:

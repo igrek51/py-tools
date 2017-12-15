@@ -280,6 +280,7 @@ class ArgumentsProcessor:
     def printVersion(self):
         print('%s v%s' % (self._appName, self._version))
 
+# commands ready to invoke
 # workaround for invoking help by function reference
 def printHelp(argsProcessor):
     argsProcessor.printHelp()
