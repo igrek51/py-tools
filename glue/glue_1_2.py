@@ -29,7 +29,7 @@ def error(message):
 
 def fatal(message):
     error(message)
-    raise Exception('Fatal error: %s' % message)
+    raise RuntimeError('Fatal error: %s' % message)
 
 # ----- Shell
 def shellExec(cmd):
@@ -275,7 +275,7 @@ class ArgumentsProcessor:
             for rule in self._argRules:
                 if rule.isOption:
                     print('  %s' % rule.displayHelp(syntaxPadding))
-        sys.exit()
+        sys.exit(0)
 
     def printVersion(self):
         print('%s v%s' % (self._appName, self._version))
