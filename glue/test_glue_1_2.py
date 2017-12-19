@@ -294,6 +294,19 @@ def test_ArgumentsProcessor_defaultRule():
         argsProcessor = sampleProcessor1()
         argsProcessor.bindDefault(command1, description='defaultAction', syntaxSuffix='<param>')
         assertSystemExit(lambda: argsProcessor.processAll())
+    with mockArgs(None), mockOutput() as out:
+        argsProcessor = ArgumentsProcessor('appName', '1.0.1')
+        argsProcessor.bindDefault(command1, description='defaultAction', syntaxSuffix='<param>')
+        assertSystemExit(lambda: argsProcessor.processAll())
+        assert '<param>' in out.getvalue()
+        assert 'defaultAction' in out.getvalue()
+    # test getting params
+    with mockArgs(['dupa2']), mockOutput() as out:
+        argsProcessor = ArgumentsProcessor('appName', '1.0.1')
+        argsProcessor.bindDefault(command2, description='defaultAction', syntaxSuffix='<param>')
+        argsProcessor.processAll()
+        assert out.getvalue() == 'dupa2\n'
+
 
 def test_ArgumentsProcessor_bindDefaults():
     with mockArgs(['-v']), mockOutput() as out:

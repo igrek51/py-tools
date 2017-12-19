@@ -146,12 +146,17 @@ class CommandArgRule:
         self.isOption = isOption
         self.action = action
         # store names list
-        self.names = name if isinstance(name, list) else [name]
+        if not name:
+            self.names = None
+        elif isinstance(name, list):
+            self.names = name
+        else:
+            self.names = [name]
         self.description = description
         self.syntaxSuffix = syntaxSuffix
 
     def displayNames(self):
-        return ', '.join(self.names)
+        return ', '.join(self.names) if self.names else ''
 
     def displaySyntax(self):
         syntax = self.displayNames()
@@ -271,10 +276,16 @@ class ArgumentsProcessor:
 
     def _processArgument(self, arg):
         rule = self._findCommandArgRule(arg)
-        if not rule:
-            rule = self._defaultRule # default rule
         if rule:
             self._invokeAction(rule.action)
+        elif self._defaultRule:
+            # invoke default rule
+            rule = self._defaultRule
+            # append polled arg
+            self._argsQue = [arg] + self._argsQue
+            self._invokeAction(rule.action)
+            # clear args que
+            self._argsQue = []
         else:
             fatal('unknown argument: %s' % arg)
 
@@ -309,9 +320,11 @@ class ArgumentsProcessor:
             usageSyntax += ' [options]'
         if commandsCount > 0:
             usageSyntax += ' <command>'
-        if optionsCount + commandsCount == 0 and self._defaultRule and self._defaultRule.syntaxSuffix:
+        if commandsCount == 0 and self._defaultRule and self._defaultRule.syntaxSuffix: # only default rule
             usageSyntax += self._defaultRule.displaySyntax()
         print('  %s' % usageSyntax)
+        if commandsCount == 0 and self._defaultRule and self._defaultRule.description: # only default rule
+            print('\n%s' % self._defaultRule.description)
         syntaxPadding = self._calcMinSyntaxPadding()
         if commandsCount > 0:
             print('\nCommands:')
