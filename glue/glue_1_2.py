@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-glue v1.2.4
+glue v1.2.5
 Common Utilities Toolkit compatible with Python 2.7 and 3
 
 Author: igrek51
@@ -174,7 +174,7 @@ class ArgumentsProcessor:
         self._argsQue = sys.argv[1:] # CLI arguments list
         self._argsOffset = 0
         self._emptyAction = None
-        self._defaultAction = None
+        self._defaultRule = None
 
     def bindOption(self, action, name, description=None, syntaxSuffix=None):
         self._argRules.append(CommandArgRule(True, action, name, description, syntaxSuffix))
@@ -186,12 +186,12 @@ class ArgumentsProcessor:
 
     def bindEmpty(self, action):
         """bind action on empty arguments list"""
-        self._emptyAction = CommandArgRule(False, action, None, None, None)
+        self._emptyAction = action
         return self
 
     def bindDefault(self, action, name, description=None, syntaxSuffix=None):
-        """bind action on no command nor option recognized"""
-        self._defaultAction = CommandArgRule(False, action, None, description, syntaxSuffix)
+        """bind action on no command nor option recognized - default rule"""
+        self._defaultRule = CommandArgRule(False, action, None, description, syntaxSuffix)
         return self
 
     def bindDefaults(self):
@@ -233,10 +233,13 @@ class ArgumentsProcessor:
 
     # Processing args
     def processAll(self):
-        # empty arguments list - print help
+        # empty arguments list
         if not self._argsQue:
-            self.printHelp()
-        # first process all options
+            if self._emptyAction:
+                self._invokeAction(self._emptyAction)
+            else:
+                self.printHelp()
+        # process all options first
         self.processOptions()
         # then process the rest of commands
         self._argsOffset = 0
@@ -258,15 +261,18 @@ class ArgumentsProcessor:
             return rule.isOption
         return False
 
+    def _invokeAction(self, action):
+        # execute action(self) or action()
+        (args, _, _, _) = inspect.getargspec(action)
+        if args:
+            action(self)
+        else:
+            action()
+
     def _processArgument(self, arg):
         rule = self._findCommandArgRule(arg)
         if rule:
-            # execute action(self) or action()
-            (args, _, _, _) = inspect.getargspec(rule.action)
-            if args:
-                rule.action(self)
-            else:
-                rule.action()
+            self._invokeAction(rule.action)
         else:
             fatal('unknown argument: %s' % arg)
 
