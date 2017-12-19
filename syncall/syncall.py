@@ -13,6 +13,9 @@ def start():
 			if not ('Your branch is up-to-date' in statusOutput and 'nothing to commit, working tree clean' in statusOutput):
 				debug('git status - %s:' % d)
 				print(statusOutput)
+				if 'Your branch is ahead' in statusOutput:
+					debug('pushing - %s...' % d)
+					shellExec('git push')
 			setWorkdir('..')
 
 start()
