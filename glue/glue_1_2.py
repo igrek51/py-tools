@@ -189,7 +189,7 @@ class ArgumentsProcessor:
         self._emptyAction = action
         return self
 
-    def bindDefault(self, action, name, description=None, syntaxSuffix=None):
+    def bindDefault(self, action, description=None, syntaxSuffix=None):
         """bind action on no command nor option recognized - default rule"""
         self._defaultRule = CommandArgRule(False, action, None, description, syntaxSuffix)
         return self
@@ -271,6 +271,8 @@ class ArgumentsProcessor:
 
     def _processArgument(self, arg):
         rule = self._findCommandArgRule(arg)
+        if not rule:
+            rule = self._defaultRule # default rule
         if rule:
             self._invokeAction(rule.action)
         else:
@@ -301,18 +303,20 @@ class ArgumentsProcessor:
         self.printVersion()
         print('\nUsage:')
         usageSyntax = sys.argv[0]
-        if self._optionRulesCount() > 0:
+        optionsCount = self._optionRulesCount()
+        commandsCount = self._commandRulesCount()
+        if optionsCount > 0:
             usageSyntax += ' [options]'
-        if self._commandRulesCount() > 0:
+        if commandsCount > 0:
             usageSyntax += ' <command>'
         print('  %s' % usageSyntax)
         syntaxPadding = self._calcMinSyntaxPadding()
-        if self._commandRulesCount() > 0:
+        if commandsCount > 0:
             print('\nCommands:')
             for rule in self._argRules:
                 if not rule.isOption:
                     print('  %s' % rule.displayHelp(syntaxPadding))
-        if self._optionRulesCount() > 0:
+        if optionsCount > 0:
             print('\nOptions:')
             for rule in self._argRules:
                 if rule.isOption:

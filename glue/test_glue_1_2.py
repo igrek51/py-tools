@@ -197,6 +197,12 @@ def test_ArgumentsProcessor_bindEmpty():
         sampleProcessor1().bindEmpty(command1).bindEmpty(commandDupa).processAll()
         assert out.getvalue() == 'dupa\n'
 
+def test_ArgumentsProcessor_bindDefault():
+    # test bindings
+    with mockArgs(None), mockOutput() as out:
+        sampleProcessor1().bindEmpty(command1).processAll()
+        assert out.getvalue() == 'None\n'
+
 def test_ArgumentsProcessor_optionsFirst():
     # test processing options first
     with mockArgs(['-h', 'dupa']):
@@ -277,3 +283,25 @@ def test_ArgumentsProcessor_unknownArg():
     # test unknown argument
     with mockArgs(['dupa']):
         assertError(lambda: sampleProcessor1().processAll(), 'unknown argument: dupa')
+
+def test_ArgumentsProcessor_defaultRule():
+    with mockArgs(['dupa']), mockOutput() as out:
+        argsProcessor = sampleProcessor1()
+        argsProcessor.bindDefault(command1, description='defaultAction', syntaxSuffix='<param>')
+        argsProcessor.processAll()
+        assert out.getvalue() == 'None\n'
+    with mockArgs(None), mockOutput() as out:
+        argsProcessor = sampleProcessor1()
+        argsProcessor.bindDefault(command1, description='defaultAction', syntaxSuffix='<param>')
+        assertSystemExit(lambda: argsProcessor.processAll())
+
+def test_ArgumentsProcessor_bindDefaults():
+    with mockArgs(['-v']), mockOutput() as out:
+        ArgumentsProcessor('appName', '1.0.1').bindDefaults().processAll()
+        assert out.getvalue() == 'appName v1.0.1\n'
+    with mockArgs(['-v', '--version']), mockOutput() as out:
+        ArgumentsProcessor('appName', '1.0.1').bindDefaults().processAll()
+        assert out.getvalue() == 'appName v1.0.1\nappName v1.0.1\n'
+    with mockArgs(['-h']), mockOutput() as out:
+        argsProcessor = ArgumentsProcessor('appName', '1.0.1').bindDefaults()
+        assertSystemExit(lambda: argsProcessor.processAll())
