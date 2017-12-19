@@ -140,6 +140,10 @@ def filterList(condition, lst):
     # condition example: lambda l: len(l) > 0
     return list(filter(condition, lst))
 
+def mapList(mapper, lst):
+    # mapper example: lambda l: l + l
+    return list(map(mapper, lst))
+
 # ----- CLI arguments
 class CommandArgRule:
     def __init__(self, isOption, action, name, description, syntaxSuffix):

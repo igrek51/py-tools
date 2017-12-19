@@ -6,12 +6,6 @@ try:
 except ImportError:
     from io import StringIO
 
-def test_output():
-    debug('debug')
-    info('info')
-    warn('warn')
-    error('error')
-
 def assertError(action, expectedError=None):
     try:
         action()
@@ -27,6 +21,27 @@ def assertSystemExit(action):
     except SystemExit as e:
         # exit with error code 0
         assert str(e) == '0'
+
+def mockArgs(argsList):
+    if not argsList:
+        argsList = []
+    return patch.object(sys, 'argv', ['glue'] + argsList)
+
+def mockOutput():
+    return patch('sys.stdout', new=StringIO())
+
+
+def test_output():
+    with mockOutput() as out:
+        debug('message')
+        assert 'message' in out.getvalue()
+        assert 'debug' in out.getvalue()
+        info('message')
+        assert 'info' in out.getvalue()
+        warn('message')
+        assert 'warn' in out.getvalue()
+        error('message')
+        assert 'ERROR' in out.getvalue()
 
 def test_fatal():
     assertError(lambda: fatal('fatality'))
@@ -115,6 +130,9 @@ def test_workdir():
 def test_filterList():
     assert filterList(lambda e: len(e) <= 3, ['a', '123', '12345']) == ['a', '123']
 
+def test_mapList():
+    assert mapList(lambda e: e + e, ['a', '123', '']) == ['aa', '123123', '']
+
 # CommandArgRule
 def test_CommandArgRule():
     assert CommandArgRule(True, None, 'name', 'description', 'syntaxSuffix').displayNames() == 'name'
@@ -128,14 +146,6 @@ def test_CommandArgRule():
     assert CommandArgRule(True, None, ['name'], 'description', '<s>').displayHelp(10) == 'name <s>   - description'
 
 # ArgumentsProcessor
-def mockArgs(argsList):
-    if not argsList:
-        argsList = []
-    return patch.object(sys, 'argv', ['glue'] + argsList)
-
-def mockOutput():
-    return patch('sys.stdout', new=StringIO())
-
 def command1():
     print(None)
 
