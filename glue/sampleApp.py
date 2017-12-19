@@ -11,10 +11,7 @@ def start():
 
 	argsProcessor.bindCommand(commandSample, 'sample', description='description', syntaxSuffix='<param>')
 
-	argsProcessor.bindOption(printHelp, ['-h', '--help'], description='display this help and exit')
-	argsProcessor.bindOption(printVersion, ['-v', '--version'], description='print version and exit')
-
-	argsProcessor.processAll()
+	argsProcessor.bindDefaults().processAll()
 
 if __name__ == '__main__': # for debugging by importing module
 	start()

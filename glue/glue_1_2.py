@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-glue v1.2.3
+glue v1.2.4
 Common Utilities Toolkit compatible with Python 2.7 and 3
 
 Author: igrek51
@@ -29,7 +29,24 @@ def error(message):
 
 def fatal(message):
     error(message)
-    raise RuntimeError('Fatal error: %s' % message)
+    raise RuntimeError(message)
+
+# ----- Input
+def rawInput(prompt=None):
+    """raw input compatible with python 2 and 3"""
+    try:
+       return raw_input(prompt) # python2
+    except NameError:
+       pass
+    return input(prompt) # python3
+
+def inputRequired(prompt):
+    while True:
+        inputted = rawInput(prompt)
+        if not inputted:
+            continue
+        print
+        return inputted
 
 # ----- Shell
 def shellExec(cmd):
@@ -45,7 +62,7 @@ def shellOutput(cmd):
     output, err = process.communicate()
     return output.decode('utf-8')
 
-# ----- String operations
+# ----- String operations: splitting
 def splitLines(inputString):
     allLines = inputString.splitlines()
     return list(filter(lambda l: len(l) > 0, allLines)) # filter nonempty
@@ -53,6 +70,20 @@ def splitLines(inputString):
 def split(inputString, delimiter):
     return inputString.split(delimiter)
 
+def splitToTuple(line, attributesCount, splitter='\t'):
+    parts = line.split(splitter)
+    if len(parts) != attributesCount:
+        fatal('invalid split parts count (found: %d, expected: %d) in line: %s' % (len(parts), attributesCount, line))
+    return tuple(parts)
+
+def splitToTuples(linesRaw, attributesCount, splitter='\t'):
+    lines = splitLines(linesRaw)
+    tuples = []
+    for line in lines:
+        tuples.append(splitToTuple(line, attributesCount, splitter))
+    return tuples
+
+# ----- RegEx
 def regexReplace(inputString, regexMatch, regexReplace):
     regexMatcher = re.compile(regexMatch)
     return regexMatcher.sub(regexReplace, inputString)
@@ -85,22 +116,6 @@ def regexSearchFile(filePath, regexMatch, groupNumber):
             if match:
                 return match.group(groupNumber)
 
-def input23(prompt=None):
-    """raw input compatible with python 2 and 3"""
-    try:
-       return raw_input(prompt) # python2
-    except NameError:
-       pass
-    return input(prompt) # python3
-
-def inputRequired(prompt):
-    while True:
-        inputted = input23(prompt)
-        if not inputted:
-            continue
-        print
-        return inputted
-
 # ----- File operations
 def readFile(filePath):
     with open(filePath, 'rb') as f:
@@ -120,7 +135,7 @@ def setWorkdir(workdir):
 def getWorkdir():
     return os.getcwd()
 
-# ----- Collections helpers
+# ----- Collections helpers - syntax reminder
 def filterList(condition, lst):
     # condition example: lambda l: len(l) > 0
     return list(filter(condition, lst))
@@ -150,6 +165,7 @@ class CommandArgRule:
             dispHelp = dispHelp.ljust(syntaxPadding) + ' - ' + self.description
         return dispHelp
 
+# ----- CLI arguments parser
 class ArgumentsProcessor:
     def __init__(self, appName, version):
         self._appName = appName
@@ -157,12 +173,32 @@ class ArgumentsProcessor:
         self._argRules = []
         self._argsQue = sys.argv[1:] # CLI arguments list
         self._argsOffset = 0
+        self._emptyAction = None
+        self._defaultAction = None
 
     def bindOption(self, action, name, description=None, syntaxSuffix=None):
         self._argRules.append(CommandArgRule(True, action, name, description, syntaxSuffix))
+        return self
 
     def bindCommand(self, action, name, description=None, syntaxSuffix=None):
         self._argRules.append(CommandArgRule(False, action, name, description, syntaxSuffix))
+        return self
+
+    def bindEmpty(self, action):
+        """bind action on empty arguments list"""
+        self._emptyAction = CommandArgRule(False, action, None, None, None)
+        return self
+
+    def bindDefault(self, action, name, description=None, syntaxSuffix=None):
+        """bind action on no command nor option recognized"""
+        self._defaultAction = CommandArgRule(False, action, None, description, syntaxSuffix)
+        return self
+
+    def bindDefaults(self):
+        # bind default options: help, version
+        self.bindOption(printHelp, ['-h', '--help'], description='display this help and exit')
+        self.bindOption(printVersion, ['-v', '--version'], description='print version')
+        return self
 
     # Getting args
     def pollNext(self):
@@ -280,8 +316,7 @@ class ArgumentsProcessor:
     def printVersion(self):
         print('%s v%s' % (self._appName, self._version))
 
-# commands ready to invoke
-# workaround for invoking help by function reference
+# commands available to invoke, workaround for invoking by function reference
 def printHelp(argsProcessor):
     argsProcessor.printHelp()
 

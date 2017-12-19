@@ -12,20 +12,29 @@ def test_output():
     warn('warn')
     error('error')
 
-def test_fatal():
+def assertError(action, expectedError=None):
     try:
-        fatal('fatality')
+        action()
         assert False
-    except Exception:
-        assert True
+    except RuntimeError as e:
+        if expectedError:
+            assert str(e) == expectedError
+
+def assertSystemExit(action):
+    try:
+        action()
+        assert False
+    except SystemExit as e:
+        # exit with error code 0
+        assert str(e) == '0'
+
+def test_fatal():
+    assertError(lambda: fatal('fatality'))
+    assertError(lambda: fatal('fatality'), 'fatality')
 
 def test_shellExec():
     shellExec('echo test')
-    try:
-        shellExec('dupafatality')
-        assert False
-    except Exception:
-        assert True
+    assertError(lambda: shellExec('dupafatality'))
     assert shellExecErrorCode('echo test') == 0
     assert shellOutput('echo test') == 'test\n'
 
@@ -39,6 +48,22 @@ def test_splitLines():
 def test_split():
     assert split('a b c', ' ') == ['a', 'b', 'c']
     assert split('abc', ' ') == ['abc']
+
+def test_splitToTuple():
+    assert splitToTuple('a', 1) == ('a',)
+    assert splitToTuple('', 1) == ('',)
+    assertError(lambda: splitToTuple('a', 2))
+    assert splitToTuple('a\tb', 2) == ('a','b')
+    assertError(lambda: splitToTuple('a\tb', 1))
+    assertError(lambda: splitToTuple('a\tb\t', 2))
+    assert splitToTuple('a\tb\t', 3) == ('a','b','')
+    assert splitToTuple('a\tb\tc', 3) == ('a','b','c')
+    assert splitToTuple('a b c', 3, ' ') == ('a','b','c')
+
+def test_splitToTuples():
+    assert splitToTuples('a\tb\tc\nd\te\tf', 3) == [('a', 'b', 'c'), ('d', 'e', 'f')]
+    assert splitToTuples('\n\na\tb\tc\n\nd\te\tf\n', 3) == [('a', 'b', 'c'), ('d', 'e', 'f')]
+    assert splitToTuples('a\tb\tc', 3) == [('a', 'b', 'c')]
 
 def test_regexReplace():
     assert regexReplace('abca', 'a', 'b') == 'bbcb'
@@ -60,10 +85,10 @@ def test_regex_lines():
     assert regexSearchFile('test/res/findme', r'\t*<author>(\w*)</author>', 1) == 'Anonim'
     assert regexSearchFile('test/res/findme', r'\t*<name>(\w*)</name><sur>(\w*)</sur>', 2) == 'Sur'
 
-def test_input23():
+def test_input():
     sys.stdin = open('test/res/inputs')
-    assert input23() == 'in1'
-    assert input23('prompt') == 'in2'
+    assert rawInput() == 'in1'
+    assert rawInput('prompt') == 'in2'
 
 def test_inputRequired():
     sys.stdin = open('test/res/inputRequired')
@@ -149,43 +174,25 @@ def sampleProcessor1():
 def test_ArgumentsProcessor_noArg():
     # basic execution with no args
     with mockArgs(None):
-        try:
-            argsProcessor = ArgumentsProcessor('appName', '1.0.1')
-            argsProcessor.processAll()
-            assert False
-        except SystemExit as e:
-            # prints help and exit
-            assert str(e) == '0'
+        # prints help and exit
+        assertSystemExit(lambda: ArgumentsProcessor('appName', '1.0.1').processAll())
 
 def test_ArgumentsProcessor_bindingsSetup():
     # test bindings
     with mockArgs(None):
-        try:
-            sampleProcessor1().processAll()
-            assert False
-        except SystemExit as e:
-            # prints help and exit
-            assert str(e) == '0'
+        # prints help and exit
+        assertSystemExit(lambda: sampleProcessor1().processAll())
 
 def test_ArgumentsProcessor_optionsFirst():
     # test processing options first
     with mockArgs(['-h', 'dupa']):
-        try:
-            sampleProcessor1().processAll()
-            assert False
-        except SystemExit as e:
-            # prints help and exit
-            assert str(e) == '0'
+        # prints help and exit
+        assertSystemExit(lambda: sampleProcessor1().processAll())
 
 def test_ArgumentsProcessor_noNextArg():
     # test lack of next argument
     with mockArgs(['command2']):
-        try:
-            sampleProcessor1().processAll()
-            assert False
-        except RuntimeError as e:
-            # prints help and exit
-            assert str(e) == 'Fatal error: no param parameter given'
+        assertError(lambda: sampleProcessor1().processAll(), 'no param parameter given')
     with mockArgs(['command33']):
         with mockOutput() as fakeOutput:
             sampleProcessor1().processAll()
@@ -269,9 +276,4 @@ def test_ArgumentsProcessor_removingArgs():
 def test_ArgumentsProcessor_unknownArg():
     # test unknown argument
     with mockArgs(['dupa']):
-        try:
-            sampleProcessor1().processAll()
-            assert False
-        except RuntimeError as e:
-            # prints help and exit
-            assert str(e) == 'Fatal error: unknown argument: dupa'
+        assertError(lambda: sampleProcessor1().processAll(), 'unknown argument: dupa')
