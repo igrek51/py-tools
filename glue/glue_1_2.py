@@ -309,6 +309,8 @@ class ArgumentsProcessor:
             usageSyntax += ' [options]'
         if commandsCount > 0:
             usageSyntax += ' <command>'
+        if optionsCount + commandsCount == 0 and self._defaultRule and self._defaultRule.syntaxSuffix:
+            usageSyntax += self._defaultRule.displaySyntax()
         print('  %s' % usageSyntax)
         syntaxPadding = self._calcMinSyntaxPadding()
         if commandsCount > 0:
