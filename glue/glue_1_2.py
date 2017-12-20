@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-glue v1.2.5
+glue v1.2.6
 Common Utilities Toolkit compatible with Python 2.7 and 3
 
 Author: igrek51
@@ -12,6 +12,7 @@ import re
 import subprocess
 import glob
 import inspect
+import time
 from builtins import bytes
 
 # ----- Output
@@ -135,6 +136,18 @@ def setWorkdir(workdir):
 def getWorkdir():
     return os.getcwd()
 
+# ----- Time format operations
+def str2time(timeRaw, pattern):
+    try:
+        return time.strptime(timeRaw, pattern)
+    except ValueError as e:
+        return None
+
+def time2str(datetime, pattern):
+    if not datetime:
+        return None
+    return time.strftime(pattern, datetime)
+
 # ----- Collections helpers - syntax reminder
 def filterList(condition, lst):
     # condition example: lambda l: len(l) > 0
@@ -184,6 +197,7 @@ class ArgumentsProcessor:
         self._argsOffset = 0
         self._emptyAction = None
         self._defaultRule = None
+        self._params = {}
 
     def bindOption(self, action, name, description=None, syntaxSuffix=None):
         self._argRules.append(CommandArgRule(True, action, name, description, syntaxSuffix))
@@ -198,10 +212,13 @@ class ArgumentsProcessor:
         self._emptyAction = action
         return self
 
-    def bindDefault(self, action, description=None, syntaxSuffix=None):
+    def bindDefaultAction(self, action, description=None, syntaxSuffix=None):
         """bind action on no command nor option recognized - default rule"""
         self._defaultRule = CommandArgRule(False, action, None, description, syntaxSuffix)
         return self
+
+    def bindParam(self, paramName, name, description=None):
+        return self.bindOption(lambda: self.pollParam(paramName), name, description, '<%s>' % paramName)
 
     def bindDefaults(self):
         # bind default options: help, version
@@ -297,6 +314,17 @@ class ArgumentsProcessor:
         for rule in self._argRules:
             if arg in rule.names:
                 return rule
+
+    # setting / getting params
+    def setParam(self, name, value):
+        self._params[name] = value
+
+    def pollParam(self, name):
+        param = self.pollNextRequired(name)
+        self.setParam(name, param)
+
+    def getParam(self, name):
+        return self._params.get(name, None)
 
     # autogenerating help output
     def _optionRulesCount(self):
