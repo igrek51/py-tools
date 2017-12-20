@@ -122,10 +122,16 @@ def test_listDir():
     assert listDir('test/res/listme') == ['afile', 'dir', 'zlast', 'zlastdir']
 
 def test_workdir():
+    workdir = getWorkdir()
     setWorkdir('/')
     assert getWorkdir() == '/'
     setWorkdir('/home/')
     assert getWorkdir() == '/home'
+    setWorkdir(workdir)
+
+def test_fileExists():
+    assert fileExists('test/res/readme')
+    assert not fileExists('test/res/dupadupa')
 
 def test_filterList():
     assert filterList(lambda e: len(e) <= 3, ['a', '123', '12345']) == ['a', '123']
@@ -223,7 +229,7 @@ def test_ArgumentsProcessor_bindEmpty():
         sampleProcessor1().bindEmpty(command1).bindEmpty(commandDupa).processAll()
         assert out.getvalue() == 'dupa\n'
 
-def test_ArgumentsProcessor_bindDefault():
+def test_ArgumentsProcessor_bindEmpty():
     # test bindings
     with mockArgs(None), mockOutput() as out:
         sampleProcessor1().bindEmpty(command1).processAll()
@@ -356,3 +362,9 @@ def test_ArgumentsProcessor_settingParams():
         argsProcessor.processAll()
         assert argsProcessor.getParam('para') == 'dup'
 
+def test_ArgumentsProcessor_optionsAndDefaultAcction():
+    with mockArgs(['-v', '--version']), mockOutput() as out:
+        argsProcessor = sampleProcessor1()
+        argsProcessor.bindDefaultAction(command1, description='defaultAction', syntaxSuffix='<param>')
+        argsProcessor.processAll()
+        assert out.getvalue() == 'appName v1.0.1\nappName v1.0.1\nNone\n'

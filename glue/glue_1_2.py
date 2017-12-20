@@ -272,17 +272,18 @@ class ArgumentsProcessor:
                 self._invokeDefaultAction()
             else:
                 self.printHelp()
-        # process all options first
-        self.processOptions()
-        # then process the rest of commands
-        if self.hasNext():
+        else:
+            # process all options first
+            self.processOptions()
+            # then process commands
             self._argsOffset = 0
-            while self.hasNext():
-                self._processArgument(self.pollNext())
-        # if no commands - run default action
-        elif self._defaultAction:
-            self._invokeDefaultAction()
-        
+            if self.hasNext():
+                while self.hasNext():
+                    self._processArgument(self.pollNext())
+            # if no commands - run default action
+            elif self._defaultAction:
+                self._invokeDefaultAction()
+
     def processOptions(self):
         self._argsOffset = 0
         while self.hasNext():
