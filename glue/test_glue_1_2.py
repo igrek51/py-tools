@@ -319,10 +319,12 @@ def test_ArgumentsProcessor_defaultAction():
     with mockArgs(None), mockOutput() as out:
         argsProcessor = sampleProcessor1()
         argsProcessor.bindDefaultAction(command1, description='defaultAction', syntaxSuffix='<param>')
-        assertSystemExit(lambda: argsProcessor.processAll())
+        argsProcessor.processAll()
+        assert out.getvalue() == 'None\n'
     with mockArgs(None), mockOutput() as out:
         argsProcessor = ArgumentsProcessor('appName', '1.0.1')
         argsProcessor.bindDefaultAction(command1, description='defaultAction', syntaxSuffix='<param>')
+        argsProcessor.bindEmpty(printHelp)
         assertSystemExit(lambda: argsProcessor.processAll())
         assert '<param>' in out.getvalue()
         assert 'defaultAction' in out.getvalue()

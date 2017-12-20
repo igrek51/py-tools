@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-glue v1.2.6
+glue v1.2.7
 Common Utilities Toolkit compatible with Python 2.7 and 3
 
 Author: igrek51
@@ -196,7 +196,7 @@ class ArgumentsProcessor:
         self._argsQue = sys.argv[1:] # CLI arguments list
         self._argsOffset = 0
         self._emptyAction = None
-        self._defaultRule = None
+        self._defaultAction = None
         self._params = {}
 
     def bindOption(self, action, name, description=None, syntaxSuffix=None):
@@ -213,8 +213,8 @@ class ArgumentsProcessor:
         return self
 
     def bindDefaultAction(self, action, description=None, syntaxSuffix=None):
-        """bind action on no command nor option recognized - default rule"""
-        self._defaultRule = CommandArgRule(False, action, None, description, syntaxSuffix)
+        """bind action on no command nor option recognized"""
+        self._defaultAction = CommandArgRule(False, action, None, description, syntaxSuffix)
         return self
 
     def bindParam(self, paramName, name, description=None):
@@ -263,6 +263,8 @@ class ArgumentsProcessor:
         if not self._argsQue:
             if self._emptyAction:
                 self._invokeAction(self._emptyAction)
+            elif self._defaultAction:
+                self._invokeDefaultAction()
             else:
                 self.printHelp()
         # process all options first
@@ -295,16 +297,18 @@ class ArgumentsProcessor:
         else:
             action()
 
+    def _invokeDefaultAction(self):
+        rule = self._defaultAction
+        self._invokeAction(rule.action)
+
     def _processArgument(self, arg):
         rule = self._findCommandArgRule(arg)
         if rule:
             self._invokeAction(rule.action)
-        elif self._defaultRule:
-            # invoke default rule
-            rule = self._defaultRule
-            # append polled arg
+        elif self._defaultAction:
+            # retrieve polled arg
             self._argsQue = [arg] + self._argsQue
-            self._invokeAction(rule.action)
+            self._invokeDefaultAction()
             # clear args que
             self._argsQue = []
         else:
@@ -352,11 +356,11 @@ class ArgumentsProcessor:
             usageSyntax += ' [options]'
         if commandsCount > 0:
             usageSyntax += ' <command>'
-        if commandsCount == 0 and self._defaultRule and self._defaultRule.syntaxSuffix: # only default rule
-            usageSyntax += self._defaultRule.displaySyntax()
+        if commandsCount == 0 and self._defaultAction and self._defaultAction.syntaxSuffix: # only default rule
+            usageSyntax += self._defaultAction.displaySyntax()
         print('  %s' % usageSyntax)
-        if commandsCount == 0 and self._defaultRule and self._defaultRule.description: # only default rule
-            print('\n%s' % self._defaultRule.description)
+        if commandsCount == 0 and self._defaultAction and self._defaultAction.description: # only default rule
+            print('\n%s' % self._defaultAction.description)
         syntaxPadding = self._calcMinSyntaxPadding()
         if commandsCount > 0:
             print('\nCommands:')
