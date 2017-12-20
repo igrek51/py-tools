@@ -71,8 +71,8 @@ def optionSetCustomTime(argsProcessor):
 
 def actionSaveTime(argsProcessor):
 	filename = LAST_TIME_FILENAME_DEFAULT
-	if argsProcessor.getParam('io-file'):
-		filename = argsProcessor.getParam('io-file')
+	if argsProcessor.getParam('iofile'):
+		filename = argsProcessor.getParam('iofile')
 
 	lastTime = readLastTime(filename)
 	customtime = argsProcessor.getParam('customtime')
@@ -101,12 +101,12 @@ def actionSaveTime(argsProcessor):
 def start():
 	argsProcessor = ArgumentsProcessor('Daily uptime registering tool', '1.0.1')
 
-	argsProcessor.bindParam('io-file', ['-f', '--file'], description='last time datafile ("%s" by default)' % LAST_TIME_FILENAME_DEFAULT)
+	argsProcessor.bindParam('iofile', ['-f', '--file'], description='last time datafile ("%s" by default)' % LAST_TIME_FILENAME_DEFAULT)
 	argsProcessor.bindOption(optionSetCustomTime, ['-s', '--set'], description='save custom time ("HH:MM:SS, dd.mm.YYYY" or "HH:MM:SS" or "HH:MM")', syntaxSuffix='<customtime>')
 	argsProcessor.bindDefaultAction(actionSaveTime)
 	argsProcessor.bindDefaults()
 
 	argsProcessor.processAll()
 
-if __name__ == '__main__': # for debugging by importing module
+if __name__ == '__main__': # for testing purposes
 	start()

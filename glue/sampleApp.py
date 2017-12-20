@@ -14,5 +14,5 @@ def start():
 	
 	argsProcessor.processAll()
 
-if __name__ == '__main__': # for debugging by importing module
+if __name__ == '__main__': # for testing purposes
 	start()

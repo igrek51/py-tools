@@ -130,6 +130,9 @@ def saveFile(filePath, content):
 def listDir(path):
     return sorted(os.listdir(path))
 
+def fileExists(path):
+    return os.path.isfile(path)
+
 def setWorkdir(workdir):
     os.chdir(workdir)
 
@@ -138,12 +141,14 @@ def getWorkdir():
 
 # ----- Time format operations
 def str2time(timeRaw, pattern):
+    """pattern: %H:%M:%S, %d.%m.%Y"""
     try:
         return time.strptime(timeRaw, pattern)
     except ValueError as e:
         return None
 
 def time2str(datetime, pattern):
+    """pattern: %H:%M:%S, %d.%m.%Y"""
     if not datetime:
         return None
     return time.strftime(pattern, datetime)
@@ -270,10 +275,14 @@ class ArgumentsProcessor:
         # process all options first
         self.processOptions()
         # then process the rest of commands
-        self._argsOffset = 0
-        while self.hasNext():
-            self._processArgument(self.pollNext())
-
+        if self.hasNext():
+            self._argsOffset = 0
+            while self.hasNext():
+                self._processArgument(self.pollNext())
+        # if no commands - run default action
+        elif self._defaultAction:
+            self._invokeDefaultAction()
+        
     def processOptions(self):
         self._argsOffset = 0
         while self.hasNext():
