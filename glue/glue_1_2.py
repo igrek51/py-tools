@@ -51,7 +51,7 @@ def inputRequired(prompt):
 
 # ----- Shell
 def shellExec(cmd):
-    errCode = subprocess.call(cmd, shell=True)
+    errCode = shellExecErrorCode(cmd)
     if errCode != 0:
         fatal('failed executing: %s' % cmd)
 
@@ -63,7 +63,7 @@ def shellOutput(cmd):
     output, err = process.communicate()
     return output.decode('utf-8')
 
-# ----- String operations: splitting
+# ----- String Splitting
 def splitLines(inputString):
     allLines = inputString.splitlines()
     return list(filter(lambda l: len(l) > 0, allLines)) # filter nonempty
@@ -127,11 +127,11 @@ def saveFile(filePath, content):
     f.write(bytes(content, 'utf-8'))
     f.close()
 
-def listDir(path):
-    return sorted(os.listdir(path))
-
 def fileExists(path):
     return os.path.isfile(path)
+
+def listDir(path):
+    return sorted(os.listdir(path))
 
 def setWorkdir(workdir):
     os.chdir(workdir)
@@ -153,7 +153,7 @@ def time2str(datetime, pattern):
         return None
     return time.strftime(pattern, datetime)
 
-# ----- Collections helpers - syntax reminder
+# ----- Collections helpers - syntax reminders
 def filterList(condition, lst):
     # condition example: lambda l: len(l) > 0
     return list(filter(condition, lst))
