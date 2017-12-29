@@ -1,3 +1,6 @@
 [submodule "encoder"]
 	path = encoder
 	url = git@bitbucket.org:igrek51/crypto-encoder.git
+[submodule "glue"]
+	path = glue
+	url = git@github.com:igrek51/glue.git
