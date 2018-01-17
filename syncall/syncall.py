@@ -1,11 +1,10 @@
 #!/usr/bin/python2
-# -*- coding: utf-8 -*-
-
 from glue import *
 
-def start():
+def main():
 	for d in listDir('.'):
 		if os.path.isdir(d):
+			wd = getWorkdir()
 			setWorkdir(d)
 			info('Repository: %s...' % d)
 			shellExec('git pull')
@@ -16,6 +15,7 @@ def start():
 				if 'Your branch is ahead' in statusOutput:
 					debug('pushing - %s...' % d)
 					shellExec('git push')
-			setWorkdir('..')
+			setWorkdir(wd)
 
-start()
+if __name__ == '__main__': # for testing purposes
+	main() # this will not be invoked when importing this file
