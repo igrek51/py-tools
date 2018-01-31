@@ -30,16 +30,22 @@ def mockArgs(argsList):
 def mockOutput():
     return patch('sys.stdout', new=StringIO())
 
-def test_readLastTime():
-    assert readLastTime('test/notexisting') is None
-    assert readLastTime('test/empty') is None
-    assert readLastTime('test/sample') is not None
 
-def test_saveNewTime():
-    sample = readLastTime('test/sample')
-    saveNewTime(sample, 'test/copy')
-    copy = readLastTime('test/copy')
-    assert sample == copy
+def test_WorktimeRecord():
+    worktime = WorktimeRecord.parse('2018-01-03', '9:21:42', '17:21:42')
+    assert time2str(worktime.startTime, '%H:%M:%S, %Y-%m-%d') == '09:21:42, 2018-01-03'
+    assert time2str(worktime.endTime, '%H:%M:%S, %Y-%m-%d') == '17:21:42, 2018-01-03'
+
+def test_saveHoursDB():
+    db = []
+    db += [WorktimeRecord.parse('2018-01-03', '9:21:42', '17:21:42')]
+    db += [WorktimeRecord.parse('2018-01-04', '9:21:42', '17:21:42')]
+    db += [WorktimeRecord.parse('2018-01-05', '10:21:42', '17:21:42')]
+    saveHoursDB('test/save-db', db)
+    assert readFile('test/save-db') == u'2018-01-03\t09:21:42\t17:21:42\n2018-01-04\t10:21:42\t17:21:42\n2018-01-05\t09:21:42\t17:21:42\n'
+    db = []
+    saveHoursDB('test/save-db', db)
+    assert readFile('test/save-db') == ''
 
 def test_sameDay():
     t1 = str2time('12:20:05, 21.03.1951', '%H:%M:%S, %d.%m.%Y')
@@ -59,49 +65,38 @@ def test_uptime():
     assert uptime(t1, t2) == '06 h 11 min 01 s'
     assert uptime(t2, t1) == '- 06 h 11 min 01 s'
 
-def test_parseDatetimeOrTime():
-    PATTERN = '%H:%M:%S, %d.%m.%Y'
-    now = str2time('15:31:06, 21.03.1951', PATTERN)
-    t = parseDatetimeOrTime('12:01:05, 01.02.1985', now)
-    assert time2str(t, PATTERN) == '12:01:05, 01.02.1985'
-    t = parseDatetimeOrTime('12:01:05', now)
-    assert time2str(t, PATTERN) == '12:01:05, 21.03.1951'
-    t = parseDatetimeOrTime('12:07', now)
-    assert time2str(t, PATTERN) == '12:07:00, 21.03.1951'
-    t = parseDatetimeOrTime('9:07', now)
-    assert time2str(t, PATTERN) == '09:07:00, 21.03.1951'
+def test_parseDatetime():
+    PATTERN = '%H:%M:%S, %Y-%m-%d'
+    now = str2time('15:31:06, 1951-03-21', PATTERN)
+    t = parseDatetime('12:01:05, 1985-02-01', now)
+    assert time2str(t, PATTERN) == '12:01:05, 1985-02-01'
+    t = parseDatetime('12:01:05', now)
+    assert time2str(t, PATTERN) == '12:01:05, 1951-03-21'
+    t = parseDatetime('12:07', now)
+    assert time2str(t, PATTERN) == '12:07:00, 1951-03-21'
+    t = parseDatetime('9:07', now)
+    assert time2str(t, PATTERN) == '09:07:00, 1951-03-21'
+    t = parseDatetime('9', now)
+    assert time2str(t, PATTERN) == '09:00:00, 1951-03-21'
 
-def test_createStart():
-    setWorkdir('test/')
-    if fileExists('start'):
-        shellExec('rm start')
-    with mockArgs(None), mockOutput() as out:
+def test_actionSetStartTime():
+    global DB_FILE_PATH
+    global now
+    DB_FILE_PATH = 'test/hours-test'
+    now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    saveFile('test/hours-test', [])
+    assert readFile(DB_FILE_PATH) == ''
+    with mockArgs(['start', '9:07']), mockOutput() as out:
         main()
-        assert readLastTime('start') is not None
-        assert 'not existing file: start' in out.getvalue()
-    setWorkdir('../..')
+        assert readFile(DB_FILE_PATH) == '1951-03-21\t9:07:00\t15:31:06'
 
-def test_setIOFile():
-    setWorkdir('test/')
-    if fileExists('iofile'):
-        shellExec('rm iofile')
-    with mockArgs(['--file', 'iofile']), mockOutput() as out:
-        main()
-        assert readLastTime('iofile') is not None
-        assert 'not existing file: iofile' in out.getvalue()
-        shellExec('rm iofile')
-    setWorkdir('../..')
-    with mockArgs(['--file', 'test/iofile']), mockOutput() as out:
-        main()
-        assert readLastTime('test/iofile') is not None
-        assert 'not existing file: test/iofile' in out.getvalue()
-
-def test_setCustomDate():
-    with mockArgs(['--file', 'test/custom', '--set', '9:07']), mockOutput() as out:
-        main()
-        assert time2str(readLastTime('test/custom'), '%H:%M') == '09:07'
-
-def test_setCustomDate_invalid():
-    with mockArgs(['--file', 'test/custom', '--set', 'dupa']), mockOutput() as out:
+def test_actionSetStartTime_invalid():
+    global DB_FILE_PATH
+    global now
+    DB_FILE_PATH = 'test/hours-test'
+    now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    saveFile('test/hours-test', [])
+    assert readFile(DB_FILE_PATH) == ''
+    with mockArgs(['start', 'dupa']), mockOutput() as out:
         assertError(lambda: main())
 
