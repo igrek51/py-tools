@@ -112,6 +112,23 @@ def showUptime(lastWork):
     info('Uptime:     %s' % uptime(lastWork.startTime, now))
     info('Remaining:  %s' % formatDuration(8 * 3600 - elapsedS))
 
+def showReport(works):
+    elapsedSum = 0
+    for work in works:
+        date = time2str(work.startTime, DATE_FORMAT)
+        startTime = time2str(work.startTime, TIME_FORMAT)
+        endTime = time2str(work.endTime, TIME_FORMAT)
+        up = uptime(work.startTime, work.endTime)
+        elapsedSum += elapsedSeconds(work.startTime, work.endTime)
+        print('%s: %s - %s, uptime: %s' % (date, startTime, endTime, up))
+    # summary
+    recordsCount = len(works)
+    info('Days: %d' % recordsCount)
+    if recordsCount > 0:
+        info('Sum: %s' % formatDuration(elapsedSum))
+        info('Avg: %s' % formatDuration(elapsedSum // recordsCount))
+        info('avg8h diff: %s' % formatDuration(elapsedSum - recordsCount * 8 * 3600))
+
 # ----- Actions
 def actionShowUptime(argsProcessor):
     dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
@@ -146,23 +163,8 @@ def actionMonthReport(argsProcessor):
         reportMonth = time2str(now, MONTH_FORMAT)
 
     info('Monthly report for: %s' % reportMonth)
-    elapsedSum = 0
-    
     works = list(filter(lambda w: time2str(w.startTime, MONTH_FORMAT) == reportMonth, db))
-    for work in works:
-        date = time2str(work.startTime, DATE_FORMAT)
-        startTime = time2str(work.startTime, TIME_FORMAT)
-        endTime = time2str(work.endTime, TIME_FORMAT)
-        up = uptime(work.startTime, work.endTime)
-        elapsedSum += elapsedSeconds(work.startTime, work.endTime)
-        print('%s: %s - %s, uptime: %s' % (date, startTime, endTime, up))
-
-    recordsCount = len(works)
-    info('Days: %d' % recordsCount)
-    if recordsCount > 0:
-        info('Sum: %s' % formatDuration(elapsedSum))
-        info('Avg: %s' % formatDuration(elapsedSum // recordsCount))
-        info('avg8h diff: %s' % formatDuration(elapsedSum - recordsCount * 8 * 3600))
+    showReport(works)
 
 # ----- Main
 def main():
