@@ -1,4 +1,5 @@
 from worktime import *
+import worktime # for overwriting global variables
 from mock import patch
 # import StringIO (Python 2 and 3 compatible)
 try:
@@ -30,19 +31,23 @@ def mockArgs(argsList):
 def mockOutput():
     return patch('sys.stdout', new=StringIO())
 
+def recode(string):
+    return string.encode().decode() # wtf - encoding special chars
+
 
 def test_WorktimeRecord():
-    worktime = WorktimeRecord.parse('2018-01-03', '9:21:42', '17:21:42')
-    assert time2str(worktime.startTime, '%H:%M:%S, %Y-%m-%d') == '09:21:42, 2018-01-03'
-    assert time2str(worktime.endTime, '%H:%M:%S, %Y-%m-%d') == '17:21:42, 2018-01-03'
+    work = WorktimeRecord.parse('2018-01-03', '9:21:42', '17:21:42')
+    assert time2str(work.startTime, '%H:%M:%S, %Y-%m-%d') == '09:21:42, 2018-01-03'
+    assert time2str(work.endTime, '%H:%M:%S, %Y-%m-%d') == '17:21:42, 2018-01-03'
 
 def test_saveHoursDB():
     db = []
     db += [WorktimeRecord.parse('2018-01-03', '9:21:42', '17:21:42')]
-    db += [WorktimeRecord.parse('2018-01-04', '9:21:42', '17:21:42')]
-    db += [WorktimeRecord.parse('2018-01-05', '10:21:42', '17:21:42')]
+    db += [WorktimeRecord.parse('2018-01-04', '10:21:42', '17:21:42')]
+    db += [WorktimeRecord.parse('2018-01-05', '9:21:42', '17:21:42')]
     saveHoursDB('test/save-db', db)
-    assert readFile('test/save-db') == u'2018-01-03\t09:21:42\t17:21:42\n2018-01-04\t10:21:42\t17:21:42\n2018-01-05\t09:21:42\t17:21:42\n'
+    expected = '2018-01-03\t09:21:42\t17:21:42\n2018-01-04\t10:21:42\t17:21:42\n2018-01-05\t09:21:42\t17:21:42\n'
+    assert readFile('test/save-db') == expected
     db = []
     saveHoursDB('test/save-db', db)
     assert readFile('test/save-db') == ''
@@ -79,24 +84,56 @@ def test_parseDatetime():
     t = parseDatetime('9', now)
     assert time2str(t, PATTERN) == '09:00:00, 1951-03-21'
 
-def test_actionSetStartTime():
-    global DB_FILE_PATH
-    global now
-    DB_FILE_PATH = 'test/hours-test'
-    now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
-    saveFile('test/hours-test', [])
-    assert readFile(DB_FILE_PATH) == ''
-    with mockArgs(['start', '9:07']), mockOutput() as out:
-        main()
-        assert readFile(DB_FILE_PATH) == '1951-03-21\t9:07:00\t15:31:06'
+def test_actionShowUptime():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    # new record
+    dbTxt = recode('1951-03-21\t09:01:00\t14:02:03\n')
+    saveFile(worktime.DB_FILE_PATH, dbTxt)
+    with mockArgs([]), mockOutput() as out:
+        assert worktime.DB_FILE_PATH == 'test/hours-test'
+        assert readFile(worktime.DB_FILE_PATH) == dbTxt
+        worktime.main()
+        assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-21\t09:01:00\t15:31:06\n')
+    # new file
+    shellExec('rm %s' % worktime.DB_FILE_PATH)
+    with mockArgs([]), mockOutput() as out:
+        worktime.main()
+        assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-21\t15:31:06\t15:31:06\n')
+    # next day
+    saveFile(worktime.DB_FILE_PATH, '1951-03-19\t11:01:00\t14:02:03\n')
+    with mockArgs([]), mockOutput() as out:
+        worktime.main()
+        assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-19\t11:01:00\t14:02:03\n1951-03-21\t15:31:06\t15:31:06\n')
+    # update end time
+    worktime.now = str2time('16:33:08, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    saveFile(worktime.DB_FILE_PATH, '1951-03-21\t11:01:00\t14:02:03\n')
+    with mockArgs([]), mockOutput() as out:
+        worktime.main()
+        assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-21\t11:01:00\t16:33:08\n')
+        assert 'Start time: 11:01:00, 1951-03-21' in out.getvalue()
+        assert 'Now:        16:33:08, 1951-03-21' in out.getvalue()
+        assert 'Uptime:     05 h 32 min 08 s' in out.getvalue()
 
-def test_actionSetStartTime_invalid():
-    global DB_FILE_PATH
-    global now
-    DB_FILE_PATH = 'test/hours-test'
-    now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
-    saveFile('test/hours-test', [])
-    assert readFile(DB_FILE_PATH) == ''
+def test_actionSetStartTime():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    saveFile(worktime.DB_FILE_PATH, recode('1951-03-21\t09:01:00\t14:02:03\n'))
+    with mockArgs(['start', '10:01']), mockOutput() as out:
+        worktime.main()
+        assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-21\t10:01:00\t15:31:06\n')
+        assert 'Uptime:     05 h 30 min 06 s' in out.getvalue()
+    saveFile(worktime.DB_FILE_PATH, recode('1951-03-21\t09:01:00\t14:02:03\n'))
     with mockArgs(['start', 'dupa']), mockOutput() as out:
-        assertError(lambda: main())
+        assertError(lambda: worktime.main())
+
+# def test_actionSetStartTime_invalid():
+#     global DB_FILE_PATH
+#     global now
+#     DB_FILE_PATH = 'test/hours-test'
+#     now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+#     saveFile('test/hours-test', [])
+#     assert readFile(DB_FILE_PATH) == ''
+#     with mockArgs(['start', 'dupa']), mockOutput() as out:
+#         assertError(lambda: main())
 
