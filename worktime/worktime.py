@@ -3,6 +3,7 @@ from glue import *
 
 DATE_FORMAT = '%Y-%m-%d'
 TIME_FORMAT = '%H:%M:%S'
+MONTH_FORMAT = '%Y-%m'
 DATETIME_FORMAT = TIME_FORMAT + ', ' + DATE_FORMAT
 now = time.localtime()
 DB_FILE_PATH = 'hours'
@@ -61,28 +62,36 @@ def parseDatetime(timeRaw, now):
         t = str2time(timeRaw2, DATETIME_FORMAT)
     return t
 
+def parseMonth(monthRaw, now):
+    t = str2time(monthRaw, MONTH_FORMAT)
+    if not t:
+        # %mm or %m
+        monthRaw2 = time2str(now, '%Y') + '-' + monthRaw
+        t = str2time(monthRaw2, MONTH_FORMAT)
+    return t
+
 def sameDay(time1, time2):
     if time1 is None or time2 is None:
         return False
-    dayFormat = '%d.%m.%Y'
+    dayFormat = '%Y-%m-%d'
     return time2str(time1, dayFormat) == time2str(time2, dayFormat)
 
-def uptime(startTime, now):
-    elapsedS = int(time.mktime(now) - time.mktime(startTime))
+def elapsedSeconds(timeFrom, timeTo):
+    return int(time.mktime(timeTo) - time.mktime(timeFrom))
+
+def formatDuration(elapsedS):
     if elapsedS < 0:
-        warn('Elapsed time is less than 0')
-        return '- ' + uptime(now, startTime)
+        return '-' + formatDuration(-elapsedS)
     seconds = elapsedS % 60
     minutes = (elapsedS // 60) % 60
     hours = (elapsedS // 60 // 60)
-    # build elapsed time string
-    elapsed = ''
-    if hours > 0:
-        elapsed += '%02d h ' % hours
-    if minutes > 0 or hours > 0:
-        elapsed += '%02d min ' % minutes
-    elapsed += '%02d s' % seconds
-    return elapsed
+    return '%d:%02d:%02d' % (hours, minutes, seconds)
+
+def uptime(startTime, now):
+    elapsedS = elapsedSeconds(startTime, now)
+    if elapsedS < 0:
+        warn('Elapsed time is less than 0')
+    return formatDuration(elapsedS)
 
 
 def updateTime(db):
@@ -115,7 +124,7 @@ def actionSetStartTime(argsProcessor):
     db = loadHoursDB(dbPath)
     lastWork = updateTime(db)
 
-    customTimeStr = argsProcessor.pollNextRequired('customTime')
+    customTimeStr = argsProcessor.pollNextRequired('customStartTime')
     customTime = parseDatetime(customTimeStr, now)
     if not customTime:
         fatal('invalid date format: %s' % customTimeStr)
@@ -125,15 +134,40 @@ def actionSetStartTime(argsProcessor):
     saveHoursDB(dbPath, db)
 
 def actionMonthReport(argsProcessor):
-    pass
+    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
+    db = loadHoursDB(dbPath)
+    
+    if argsProcessor.hasNext():
+        reportMonthTime = parseMonth(argsProcessor.pollNext(), now)
+        reportMonth = time2str(reportMonthTime, MONTH_FORMAT)
+    else:
+        reportMonth = time2str(now, MONTH_FORMAT)
 
+    elapsedSum = 0
+    recordsCount = 0
+    info('Monthly report for: %s' % reportMonth)
+    for work in db:
+        month = time2str(work.startTime, MONTH_FORMAT)
+        if month == reportMonth:
+            date = time2str(work.startTime, DATE_FORMAT)
+            startTime = time2str(work.startTime, TIME_FORMAT)
+            endTime = time2str(work.endTime, TIME_FORMAT)
+            up = uptime(work.startTime, work.endTime)
+            elapsedSum += elapsedSeconds(work.startTime, work.endTime)
+            recordsCount += 1
+            print('%s: %s - %s, uptime: %s' % (date, startTime, endTime, up))
+    info('Days: %d' % recordsCount)
+    if recordsCount > 0:
+        info('Sum: %s' % formatDuration(elapsedSum))
+        info('Avg: %s' % formatDuration(elapsedSum // recordsCount))
+        info('avg8h diff: %s' % formatDuration(elapsedSum - recordsCount * 8 * 3600))
 
 # ----- Main
 def main():
     argsProcessor = ArgsProcessor('Worktime registering and reporting tool', '1.0.1')
 
     argsProcessor.bindCommand(actionShowUptime, 'uptime', description='show today uptime')
-    argsProcessor.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS, YYYY-mm-dd", "HH:MM:SS" or "HH:MM")', syntaxSuffix='<customTime>')
+    argsProcessor.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS, YYYY-mm-dd", "HH:MM:SS" or "HH:MM")', syntaxSuffix='<customStartTime>')
     argsProcessor.bindCommand(actionMonthReport, 'month', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='[<month>]')
     argsProcessor.bindDefaultAction(actionShowUptime)
 

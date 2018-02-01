@@ -67,8 +67,8 @@ def test_sameDay():
 def test_uptime():
     t1 = str2time('9:20:05, 21.03.1951', '%H:%M:%S, %d.%m.%Y')
     t2 = str2time('15:31:06, 21.03.1951', '%H:%M:%S, %d.%m.%Y')
-    assert uptime(t1, t2) == '06 h 11 min 01 s'
-    assert uptime(t2, t1) == '- 06 h 11 min 01 s'
+    assert uptime(t1, t2) == '6:11:01'
+    assert uptime(t2, t1) == '-6:11:01'
 
 def test_parseDatetime():
     PATTERN = '%H:%M:%S, %Y-%m-%d'
@@ -113,27 +113,42 @@ def test_actionShowUptime():
         assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-21\t11:01:00\t16:33:08\n')
         assert 'Start time: 11:01:00, 1951-03-21' in out.getvalue()
         assert 'Now:        16:33:08, 1951-03-21' in out.getvalue()
-        assert 'Uptime:     05 h 32 min 08 s' in out.getvalue()
+        assert 'Uptime:     5:32:08' in out.getvalue()
 
 def test_actionSetStartTime():
     worktime.DB_FILE_PATH = 'test/hours-test'
     worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
-    saveFile(worktime.DB_FILE_PATH, recode('1951-03-21\t09:01:00\t14:02:03\n'))
+    saveFile(worktime.DB_FILE_PATH, '1951-03-21\t09:01:00\t14:02:03\n')
     with mockArgs(['start', '10:01']), mockOutput() as out:
         worktime.main()
         assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-21\t10:01:00\t15:31:06\n')
-        assert 'Uptime:     05 h 30 min 06 s' in out.getvalue()
-    saveFile(worktime.DB_FILE_PATH, recode('1951-03-21\t09:01:00\t14:02:03\n'))
+        assert 'Uptime:     5:30:06' in out.getvalue()
+    saveFile(worktime.DB_FILE_PATH, '1951-03-21\t09:01:00\t14:02:03\n')
     with mockArgs(['start', 'dupa']), mockOutput() as out:
         assertError(lambda: worktime.main())
 
-# def test_actionSetStartTime_invalid():
-#     global DB_FILE_PATH
-#     global now
-#     DB_FILE_PATH = 'test/hours-test'
-#     now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
-#     saveFile('test/hours-test', [])
-#     assert readFile(DB_FILE_PATH) == ''
-#     with mockArgs(['start', 'dupa']), mockOutput() as out:
-#         assertError(lambda: main())
+def test_parseMonth():
+    PATTERN = '%Y-%m'
+    now = str2time('1951-07', PATTERN)
+    assert time2str(parseMonth('2017-06', now), PATTERN) == '2017-06'
+    assert time2str(parseMonth('06', now), PATTERN) == '1951-06'
+    assert time2str(parseMonth('6', now), PATTERN) == '1951-06'
+
+def test_actionMonthReport():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    dbTxt = '1951-03-21\t09:01:00\t15:02:00\n1951-03-22\t09:01:00\t17:02:00\n1951-04-21\t09:01:00\t14:02:03\n'
+    saveFile(worktime.DB_FILE_PATH, dbTxt)
+    with mockArgs(['month']), mockOutput() as out:
+        worktime.main()
+        assert 'Monthly report for: 1951-03' in out.getvalue()
+        assert 'Days: 2' in out.getvalue()
+        assert 'Sum: 14:02:00' in out.getvalue()
+        assert 'Avg: 7:01:00' in out.getvalue()
+        assert 'avg8h diff: -1:58:00' in out.getvalue()
+    # custom month
+    with mockArgs(['month', '03']), mockOutput() as out:
+        worktime.main()
+        assert 'Monthly report for: 1951-03' in out.getvalue()
+
 
