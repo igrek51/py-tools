@@ -108,7 +108,9 @@ def updateTime(db):
 def showUptime(lastWork):
     info('Start time: %s' % time2str(lastWork.startTime, DATETIME_FORMAT))
     info('Now:        %s' % time2str(now, DATETIME_FORMAT))
+    elapsedS = elapsedSeconds(lastWork.startTime, now)
     info('Uptime:     %s' % uptime(lastWork.startTime, now))
+    info('Remaining:  %s' % formatDuration(8 * 3600 - elapsedS))
 
 # ----- Actions
 def actionShowUptime(argsProcessor):
@@ -143,19 +145,19 @@ def actionMonthReport(argsProcessor):
     else:
         reportMonth = time2str(now, MONTH_FORMAT)
 
-    elapsedSum = 0
-    recordsCount = 0
     info('Monthly report for: %s' % reportMonth)
-    for work in db:
-        month = time2str(work.startTime, MONTH_FORMAT)
-        if month == reportMonth:
-            date = time2str(work.startTime, DATE_FORMAT)
-            startTime = time2str(work.startTime, TIME_FORMAT)
-            endTime = time2str(work.endTime, TIME_FORMAT)
-            up = uptime(work.startTime, work.endTime)
-            elapsedSum += elapsedSeconds(work.startTime, work.endTime)
-            recordsCount += 1
-            print('%s: %s - %s, uptime: %s' % (date, startTime, endTime, up))
+    elapsedSum = 0
+    
+    works = list(filter(lambda w: time2str(w.startTime, MONTH_FORMAT) == reportMonth, db))
+    for work in works:
+        date = time2str(work.startTime, DATE_FORMAT)
+        startTime = time2str(work.startTime, TIME_FORMAT)
+        endTime = time2str(work.endTime, TIME_FORMAT)
+        up = uptime(work.startTime, work.endTime)
+        elapsedSum += elapsedSeconds(work.startTime, work.endTime)
+        print('%s: %s - %s, uptime: %s' % (date, startTime, endTime, up))
+
+    recordsCount = len(works)
     info('Days: %d' % recordsCount)
     if recordsCount > 0:
         info('Sum: %s' % formatDuration(elapsedSum))
@@ -164,10 +166,10 @@ def actionMonthReport(argsProcessor):
 
 # ----- Main
 def main():
-    argsProcessor = ArgsProcessor('Worktime registering and reporting tool', '1.0.1')
+    argsProcessor = ArgsProcessor('Worktime registering and reporting tool', '1.1.0')
 
     argsProcessor.bindCommand(actionShowUptime, 'uptime', description='show today uptime')
-    argsProcessor.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS, YYYY-mm-dd", "HH:MM:SS" or "HH:MM")', syntaxSuffix='<customStartTime>')
+    argsProcessor.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customStartTime>')
     argsProcessor.bindCommand(actionMonthReport, 'month', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='[<month>]')
     argsProcessor.bindDefaultAction(actionShowUptime)
 

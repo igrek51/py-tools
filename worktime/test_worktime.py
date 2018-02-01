@@ -142,6 +142,7 @@ def test_actionMonthReport():
     with mockArgs(['month']), mockOutput() as out:
         worktime.main()
         assert 'Monthly report for: 1951-03' in out.getvalue()
+        print(out.getvalue())
         assert 'Days: 2' in out.getvalue()
         assert 'Sum: 14:02:00' in out.getvalue()
         assert 'Avg: 7:01:00' in out.getvalue()
