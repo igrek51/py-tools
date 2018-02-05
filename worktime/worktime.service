@@ -1,0 +1,14 @@
+[Unit]
+Description=Worktime updater
+Requires=network.target
+DefaultDependencies=no
+Before=shutdown.target reboot.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/mnt/win/Users/iszulc/y/py-tools/worktime/worktime.py
+ExecStop=/mnt/win/Users/iszulc/y/py-tools/worktime/worktime.py
+
+[Install]
+WantedBy=multi-user.target
