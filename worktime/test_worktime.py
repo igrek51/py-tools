@@ -139,7 +139,7 @@ def test_actionMonthReport():
     worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
     dbTxt = '1951-03-21\t09:01:00\t15:02:00\n1951-03-22\t09:01:00\t17:02:00\n1951-04-21\t09:01:00\t14:02:03\n'
     saveFile(worktime.DB_FILE_PATH, dbTxt)
-    with mockArgs(['month']), mockOutput() as out:
+    with mockArgs(['report', 'month']), mockOutput() as out:
         worktime.main()
         assert 'Monthly report for: 1951-03' in out.getvalue()
         print(out.getvalue())
@@ -148,8 +148,24 @@ def test_actionMonthReport():
         assert 'Avg: 7:01:00' in out.getvalue()
         assert 'avg8h diff: -1:58:00' in out.getvalue()
     # custom month
-    with mockArgs(['month', '03']), mockOutput() as out:
+    with mockArgs(['report', 'month', '03']), mockOutput() as out:
         worktime.main()
         assert 'Monthly report for: 1951-03' in out.getvalue()
 
+def test_actionReportAll():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    dbTxt = ("1951-03-21\t09:01:00\t15:02:00\n" # 6:01:00
+             "1951-03-22\t09:01:00\t17:02:00\n" # 8:01:00
+             "1951-04-21\t09:01:00\t14:02:03\n")# 5:01:03
+    saveFile(worktime.DB_FILE_PATH, dbTxt)
+    with mockArgs(['report']), mockOutput() as out:
+        worktime.main()
+        print(out.getvalue())
+        assert 'Days: 3' in out.getvalue()
+        assert 'Sum: 19:03:03' in out.getvalue()
+        assert 'Avg: 6:21:01' in out.getvalue()
+        assert 'avg8h diff: -4:56:57' in out.getvalue()
+    with mockArgs(['report', 'dupa']), mockOutput() as out:
+        assertError(lambda: worktime.main(), 'unknown report type: dupa')
 

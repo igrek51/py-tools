@@ -152,7 +152,7 @@ def actionSetStartTime(argsProcessor):
     showUptime(lastWork)
     saveHoursDB(dbPath, db)
 
-def actionMonthReport(argsProcessor):
+def actionReportMonth(argsProcessor):
     dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
     db = loadHoursDB(dbPath)
     
@@ -166,13 +166,30 @@ def actionMonthReport(argsProcessor):
     works = list(filter(lambda w: time2str(w.startTime, MONTH_FORMAT) == reportMonth, db))
     showReport(works)
 
+def actionReportAll(argsProcessor):
+    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
+    db = loadHoursDB(dbPath)
+    info('All records report:')
+    showReport(db)
+
+def actionReport(argsProcessor):
+    if argsProcessor.hasNext():
+        reportType = argsProcessor.pollNext()
+        if reportType == 'month':
+            actionReportMonth(argsProcessor)
+        else:
+            fatal('unknown report type: %s' % reportType)
+    else:
+        actionReportAll(argsProcessor)
+
 # ----- Main
 def main():
     argsProcessor = ArgsProcessor('Worktime registering and reporting tool', '1.1.0')
 
     argsProcessor.bindCommand(actionShowUptime, 'uptime', description='show today uptime')
     argsProcessor.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customStartTime>')
-    argsProcessor.bindCommand(actionMonthReport, 'month', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='[<month>]')
+    argsProcessor.bindCommand(actionReport, 'report', description='show all records report')
+    argsProcessor.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
     argsProcessor.bindDefaultAction(actionShowUptime)
 
     argsProcessor.processAll()
