@@ -164,7 +164,7 @@ class Main:
         """Start application."""
         self._analyzeArgs()
         self._validateArgs()
-        self._listObservedFiles()
+        self._listObservedFiles() # TODO refresh observed files list in cycles - not only at startup
         self._lookForChanges()
 
     def _analyzeArgs(self):
