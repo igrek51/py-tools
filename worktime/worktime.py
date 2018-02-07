@@ -37,8 +37,7 @@ def loadHoursDB(path):
     return db
 
 def lastWorktime(db):
-    if db:
-        return db[-1]
+    return db[-1] if db else None
 
 def saveHoursDB(path, db):
     output = ''
@@ -76,6 +75,9 @@ def sameDay(time1, time2):
     dayFormat = '%Y-%m-%d'
     return time2str(time1, dayFormat) == time2str(time2, dayFormat)
 
+def isBefore(before, after):
+    return int(time.mktime(after) - time.mktime(before)) > 0
+
 def elapsedSeconds(timeFrom, timeTo):
     return int(time.mktime(timeTo) - time.mktime(timeFrom))
 
@@ -102,14 +104,17 @@ def updateTime(db):
         db.append(lastWork)
     else:
         # update endTime
-        lastWork.endTime = now
+        if isBefore(lastWork.endTime, now):
+            lastWork.endTime = now
     return lastWork
 
 def showUptime(lastWork):
     info('Start time: %s' % time2str(lastWork.startTime, DATETIME_FORMAT))
     info('Now:        %s' % time2str(now, DATETIME_FORMAT))
-    elapsedS = elapsedSeconds(lastWork.startTime, now)
-    info('Uptime:     %s' % uptime(lastWork.startTime, now))
+    if isBefore(now, lastWork.endTime):
+        info('End time:   %s' % time2str(lastWork.endTime, DATETIME_FORMAT))
+    elapsedS = elapsedSeconds(lastWork.startTime, lastWork.endTime)
+    info('Uptime:     %s' % uptime(lastWork.startTime, lastWork.endTime))
     info('Remaining:  %s' % formatDuration(8 * 3600 - elapsedS))
 
 def showReport(works):
@@ -152,6 +157,20 @@ def actionSetStartTime(argsProcessor):
     showUptime(lastWork)
     saveHoursDB(dbPath, db)
 
+def actionSetEndTime(argsProcessor):
+    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
+    db = loadHoursDB(dbPath)
+    lastWork = updateTime(db)
+
+    customTimeStr = argsProcessor.pollNextRequired('customEndTime')
+    customTime = parseDatetime(customTimeStr, now)
+    if not customTime:
+        fatal('invalid date format: %s' % customTimeStr)
+    lastWork.endTime = customTime
+
+    showUptime(lastWork)
+    saveHoursDB(dbPath, db)
+
 def actionReportMonth(argsProcessor):
     dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
     db = loadHoursDB(dbPath)
@@ -177,20 +196,24 @@ def actionReport(argsProcessor):
         reportType = argsProcessor.pollNext()
         if reportType == 'month':
             actionReportMonth(argsProcessor)
+        elif reportType == 'all':
+            actionReportAll(argsProcessor)
         else:
             fatal('unknown report type: %s' % reportType)
     else:
-        actionReportAll(argsProcessor)
+        actionReportMonth(argsProcessor)
 
 # ----- Main
 def main():
     argsProcessor = ArgsProcessor('Worktime registering and reporting tool', '1.1.0')
 
+    argsProcessor.bindDefaultAction(actionShowUptime)
     argsProcessor.bindCommand(actionShowUptime, 'uptime', description='show today uptime')
     argsProcessor.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customStartTime>')
-    argsProcessor.bindCommand(actionReport, 'report', description='show all records report')
+    argsProcessor.bindCommand(actionSetEndTime, 'end', description='save custom end time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customEndTime>')
+    argsProcessor.bindCommand(actionReport, 'report', description='show current month report')
     argsProcessor.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
-    argsProcessor.bindDefaultAction(actionShowUptime)
+    argsProcessor.bindCommand(actionReport, 'report', description='show all records report', syntaxSuffix='all')
 
     argsProcessor.processAll()
 

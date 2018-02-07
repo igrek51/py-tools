@@ -142,26 +142,27 @@ def test_actionMonthReport():
     with mockArgs(['report', 'month']), mockOutput() as out:
         worktime.main()
         assert 'Monthly report for: 1951-03' in out.getvalue()
-        print(out.getvalue())
         assert 'Days: 2' in out.getvalue()
         assert 'Sum: 14:02:00' in out.getvalue()
         assert 'Avg: 7:01:00' in out.getvalue()
         assert 'avg8h diff: -1:58:00' in out.getvalue()
     # custom month
-    with mockArgs(['report', 'month', '03']), mockOutput() as out:
+    with mockArgs(['report', 'month', '04']), mockOutput() as out:
+        worktime.main()
+        assert 'Monthly report for: 1951-04' in out.getvalue()
+    with mockArgs(['report']), mockOutput() as out:
         worktime.main()
         assert 'Monthly report for: 1951-03' in out.getvalue()
 
 def test_actionReportAll():
     worktime.DB_FILE_PATH = 'test/hours-test'
     worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
-    dbTxt = ("1951-03-21\t09:01:00\t15:02:00\n" # 6:01:00
-             "1951-03-22\t09:01:00\t17:02:00\n" # 8:01:00
-             "1951-04-21\t09:01:00\t14:02:03\n")# 5:01:03
+    dbTxt = ('1951-03-21\t09:01:00\t15:02:00\n' # 6:01:00
+             '1951-03-22\t09:01:00\t17:02:00\n' # 8:01:00
+             '1951-04-21\t09:01:00\t14:02:03\n')# 5:01:03
     saveFile(worktime.DB_FILE_PATH, dbTxt)
-    with mockArgs(['report']), mockOutput() as out:
+    with mockArgs(['report', 'all']), mockOutput() as out:
         worktime.main()
-        print(out.getvalue())
         assert 'Days: 3' in out.getvalue()
         assert 'Sum: 19:03:03' in out.getvalue()
         assert 'Avg: 6:21:01' in out.getvalue()
@@ -169,3 +170,36 @@ def test_actionReportAll():
     with mockArgs(['report', 'dupa']), mockOutput() as out:
         assertError(lambda: worktime.main(), 'unknown report type: dupa')
 
+def test_isBefore():
+    t1 = str2time('12:20:05, 21.03.1951', '%H:%M:%S, %d.%m.%Y')
+    t2 = str2time('12:20:05, 22.03.1951', '%H:%M:%S, %d.%m.%Y')
+    t3 = str2time('12:20:06, 22.03.1951', '%H:%M:%S, %d.%m.%Y')
+    assert isBefore(t1, t2)
+    assert isBefore(t2, t3)
+    assert isBefore(t1, t3)
+    assert not isBefore(t1, t1)
+    assert not isBefore(t3, t1)
+
+def test_endTimeNotUpdated():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    dbTxt = '1951-03-21\t09:01:00\t15:31:07\n'
+    saveFile(worktime.DB_FILE_PATH, dbTxt)
+    with mockArgs([]), mockOutput() as out:
+        worktime.main()
+        assert readFile(worktime.DB_FILE_PATH) == recode(dbTxt)
+        assert 'Start time: 09:01:00, 1951-03-21' in out.getvalue()
+        assert 'Now:        15:31:06, 1951-03-21' in out.getvalue()
+        assert 'End time:   15:31:07, 1951-03-21' in out.getvalue()
+        assert 'Uptime:     6:30:07' in out.getvalue()
+
+def test_actionSetEndTime():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    worktime.now = str2time('15:31:06, 1951-03-21', '%H:%M:%S, %Y-%m-%d')
+    saveFile(worktime.DB_FILE_PATH, '1951-03-21\t09:01:00\t14:02:03\n')
+    with mockArgs(['end', '16:01']), mockOutput() as out:
+        worktime.main()
+        assert readFile(worktime.DB_FILE_PATH) == recode('1951-03-21\t09:01:00\t16:01:00\n')
+    saveFile(worktime.DB_FILE_PATH, '1951-03-21\t09:01:00\t14:02:03\n')
+    with mockArgs(['end', 'dupa']), mockOutput() as out:
+        assertError(lambda: worktime.main())
