@@ -7,8 +7,8 @@ Before=shutdown.target reboot.target
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/mnt/win/Users/iszulc/y/py-tools/worktime/worktime.py
-ExecStop=/mnt/win/Users/iszulc/y/py-tools/worktime/worktime.py
+ExecStart=/usr/bin/python /mnt/win/Users/iszulc/y/py-tools/worktime/worktime.py
+ExecStop=/usr/bin/python /mnt/win/Users/iszulc/y/py-tools/worktime/worktime.py
 
 [Install]
 WantedBy=multi-user.target
