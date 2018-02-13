@@ -115,7 +115,7 @@ def showUptime(lastWork):
         info('End time:   %s' % time2str(lastWork.endTime, DATETIME_FORMAT))
     elapsedS = elapsedSeconds(lastWork.startTime, lastWork.endTime)
     info('Uptime:     %s' % uptime(lastWork.startTime, lastWork.endTime))
-    info('Remaining:  %s' % formatDuration(8 * 3600 - elapsedS))
+    info('8h diff:    %s' % formatDuration(elapsedS - 8 * 3600))
 
 def showReport(works):
     elapsedSum = 0
