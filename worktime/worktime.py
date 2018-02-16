@@ -69,6 +69,16 @@ def parseMonth(monthRaw, now):
         t = str2time(monthRaw2, MONTH_FORMAT)
     return t
 
+def parseDay(dayRaw, now):
+    t = str2time(dayRaw, DATE_FORMAT) # YYYY-mm-dd
+    if not t: # mm-dd
+        dayRaw2 = time2str(now, '%Y') + '-' + dayRaw
+        t = str2time(dayRaw2, DATE_FORMAT)
+    if not t: # dd
+        dayRaw2 = time2str(now, '%Y-%m') + '-' + dayRaw
+        t = str2time(dayRaw2, DATE_FORMAT)
+    return t
+
 def sameDay(time1, time2):
     if time1 is None or time2 is None:
         return False
@@ -134,6 +144,39 @@ def showReport(works):
         info('Avg: %s' % formatDuration(elapsedSum // recordsCount))
         info('avg8h diff: %s' % formatDuration(elapsedSum - recordsCount * 8 * 3600))
 
+def getReportDateRange(argsProcessor):
+    fromDateStr = argsProcessor.getParam('fromDate')
+    fromDate = parseDay(fromDateStr, now) if fromDateStr else None
+    toDateStr = argsProcessor.getParam('toDate')
+    toDate = parseDay(toDateStr, now) if toDateStr else None
+    return (fromDate, toDate)
+
+def isDatetimeInRange(datetime, fromTime, toTime):
+    if fromTime and toTime:
+        return (not isBefore(datetime, fromTime)) and (not isBefore(toTime, datetime))
+    elif fromTime:
+        return not isBefore(datetime, fromTime)
+    elif toTime:
+        return not isBefore(toTime, datetime)
+    else:
+        return True
+
+def endOfDay(datetime):
+    endDayStr = time2str(datetime, DATE_FORMAT) + ', 23:59:59'
+    return str2time(endDayStr, DATE_FORMAT + ', %H:%M:%S')
+
+def reportDateRange(fromDate, toDate):
+    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
+    db = loadHoursDB(dbPath)
+    # complete missing date ranges
+    if toDate:
+        toDate = endOfDay(toDate)
+    fromDateStr = time2str(fromDate, DATE_FORMAT) if fromDate else None
+    toDateStr = time2str(toDate, DATE_FORMAT) if toDate else None
+    info('Report for date range: %s - %s' % (fromDateStr, toDateStr))
+    works = list(filter(lambda w: isDatetimeInRange(w.startTime, fromDate, toDate), db))
+    showReport(works)
+
 # ----- Actions
 def actionShowUptime(argsProcessor):
     dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
@@ -192,7 +235,10 @@ def actionReportAll(argsProcessor):
     showReport(db)
 
 def actionReport(argsProcessor):
-    if argsProcessor.hasNext():
+    (fromDate, toDate) = getReportDateRange(argsProcessor)
+    if fromDate or toDate:
+        reportDateRange(fromDate, toDate)
+    elif argsProcessor.hasNext():
         reportType = argsProcessor.pollNext()
         if reportType == 'month':
             actionReportMonth(argsProcessor)
@@ -214,6 +260,8 @@ def main():
     argsProcessor.bindCommand(actionReport, 'report', description='show current month report')
     argsProcessor.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
     argsProcessor.bindCommand(actionReport, 'report', description='show all records report', syntaxSuffix='all')
+    argsProcessor.bindParam('fromDate', syntax='--from', description='set report starting date ("YYYY-mm-dd", "mm-dd" or "dd")')
+    argsProcessor.bindParam('toDate', syntax='--to', description='set report ending date ("YYYY-mm-dd", "mm-dd" or "dd")')
 
     argsProcessor.processAll()
 

@@ -203,3 +203,60 @@ def test_actionSetEndTime():
     saveFile(worktime.DB_FILE_PATH, '1951-03-21\t09:01:00\t14:02:03\n')
     with mockArgs(['end', 'dupa']), mockOutput() as out:
         assertError(lambda: worktime.main())
+
+def test_parseDay():
+    PATTERN = '%Y-%m-%d'
+    now = str2time('1951-07-05', PATTERN)
+    assert time2str(parseDay('2017-07-10', now), PATTERN) == '2017-07-10'
+    assert time2str(parseDay('06-10', now), PATTERN) == '1951-06-10'
+    assert time2str(parseDay('6-1', now), PATTERN) == '1951-06-01'
+    assert time2str(parseDay('8', now), PATTERN) == '1951-07-08'
+
+def test_isDatetimeInRange():
+    t1 = str2time('21.03.1951', '%d.%m.%Y')
+    t2 = str2time('21.03.1951, 12:20:05', '%d.%m.%Y, %H:%M:%S')
+    t3 = str2time('22.03.1951', '%d.%m.%Y')
+    t4 = str2time('23.03.1951', '%d.%m.%Y')
+    assert isDatetimeInRange(t3, t1, t4)
+    assert isDatetimeInRange(t2, t1, t3)
+    assert isDatetimeInRange(t1, t1, t1)
+    assert isDatetimeInRange(t2, t2, t2)
+    assert not isDatetimeInRange(t3, t4, t1)
+    assert isDatetimeInRange(t3, t2, t4)
+    assert not isDatetimeInRange(t3, t4, t2)
+    assert not isDatetimeInRange(t4, t4, t2)
+    assert not isDatetimeInRange(t2, t4, t2)
+    assert isDatetimeInRange(t1, None, t4)
+    assert not isDatetimeInRange(t4, None, t1)
+    assert isDatetimeInRange(t4, t1, None)
+    assert not isDatetimeInRange(t1, t4, None)
+    assert isDatetimeInRange(t1, None, None)
+    assert isDatetimeInRange(t3, t3, None)
+    assert isDatetimeInRange(t3, None, t3)
+
+def test_endOfDay():
+    t1 = str2time('1951-03-21, 12:20:05', '%Y-%m-%d, %H:%M:%S')
+    assert time2str(endOfDay(t1), '%Y-%m-%d, %H:%M:%S') == '1951-03-21, 23:59:59'
+
+def test_actionReportDateRange():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    worktime.now = str2time('15:31:06, 1951-03-22', '%H:%M:%S, %Y-%m-%d')
+    dbTxt = ('1951-03-21\t09:01:00\t15:02:00\n' # 6:01:00
+             '1951-03-22\t09:01:00\t17:02:00\n' # 8:01:00
+             '1951-03-23\t09:01:00\t17:02:00\n' # 8:01:00
+             '1951-04-21\t09:01:00\t14:02:00\n')# 5:01:00
+    saveFile(worktime.DB_FILE_PATH, dbTxt)
+    with mockArgs(['report', '--from', '03-21']), mockOutput() as out:
+        worktime.main()
+        assert 'Report for date range: 1951-03-21 - None' in out.getvalue()
+        assert 'Days: 4' in out.getvalue()
+        assert 'Sum: 27:04:00' in out.getvalue()
+    with mockArgs(['report', '--to', '23']), mockOutput() as out:
+        worktime.main()
+        assert 'Report for date range: None - 1951-03-23' in out.getvalue()
+        assert 'Days: 3' in out.getvalue()
+        assert 'Sum: 22:03:00' in out.getvalue()
+    with mockArgs(['report', '--from', '1951-03-23', '--to', '23']), mockOutput() as out:
+        worktime.main()
+        assert 'Report for date range: 1951-03-23 - 1951-03-23' in out.getvalue()
+        assert 'Days: 1' in out.getvalue()
