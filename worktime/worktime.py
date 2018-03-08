@@ -120,9 +120,9 @@ def updateTime(db):
 
 def showUptime(lastWork):
     info('Start time: %s' % time2str(lastWork.startTime, DATETIME_FORMAT))
-    info('Now:        %s' % time2str(now, DATETIME_FORMAT))
-    if isBefore(now, lastWork.endTime):
+    if now != lastWork.endTime:
         info('End time:   %s' % time2str(lastWork.endTime, DATETIME_FORMAT))
+    info('Now:        %s' % time2str(now, DATETIME_FORMAT))
     elapsedS = elapsedSeconds(lastWork.startTime, lastWork.endTime)
     info('Uptime:     %s' % uptime(lastWork.startTime, lastWork.endTime))
     info('8h diff:    %s' % formatDuration(elapsedS - 8 * 3600))
