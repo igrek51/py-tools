@@ -1,15 +1,13 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-from utilframe import *
+from glue import *
 from random import randint
 
-
-GAME_DIR = '/home/thrall/games/warcraft-3-pl/'
+WARCRAFT_DIR = '/home/thrall/games/warcraft-3-pl/'
 AOE2_DIR = '/home/thrall/games/aoe2/'
 LICHKING_HOME = '/home/thrall/lichking/'
 OS_VERSION = '/home/thrall/.osversion'
-VERSION = '1.12.4'
+VERSION = '1.14.4'
 
 def listVoices():
 	voicesDir = getVoicesDir()
@@ -18,6 +16,12 @@ def listVoices():
 	voices = filter(lambda file: file.endswith('.wav'), voices)
 	return map(lambda file: file[:-4], voices)
 
+def playWav(path):
+	shellExec('aplay %s' % path)
+
+def playMp3(path):
+	shellExec('mplayer "%s" 1>/dev/null' % path)
+
 def playVoice(voiceName):
 	voicesDir = getVoicesDir()
 	if not voiceName.endswith('.wav'):
@@ -25,7 +29,7 @@ def playVoice(voiceName):
 	if not os.path.isfile(voicesDir + voiceName):
 		error('no voice file named %s' % voiceName)
 	else:
-		shellExec('aplay %s' % (voicesDir + voiceName))
+		playWav(voicesDir + voiceName)
 
 def playRandomVoice():
 	# populate voices list
@@ -49,7 +53,8 @@ def getVoicesDir():
 
 def testSound():
 	info('testing audio...')
-	playRandomVoice()
+	while(True):
+		playRandomVoice()
 
 def testNetwork():
 	info('Useful Linux commands (for your own purposes): ifconfig, ping, nmap, ip')
@@ -73,68 +78,56 @@ def testGraphics():
 	debug('glxgears error code: %d' % errorCode)
 
 def showWarcraftosInfo():
-	info('WarcraftOS v%s created by Igrek' % readFile(OS_VERSION).strip())
+	info('Welcome to the WarcraftOS v%s created by Igrek' % readFile(OS_VERSION).strip())
 	info('thrall user has no password.')
-	info('root user password: war')
+	info('root user password is: war')
+	info('According to "Convention over configuration" paradigm, everything is already set up.')
 	info('When launching the game, you have custom keys shortcuts (QWER) already enabled.')
 
-# ----- Commands
-def commandRunGame():
-	# set workdir
-	os.chdir(GAME_DIR)
+# ----- Actions
+def actionRunWar3():
+	setWorkdir(WARCRAFT_DIR)
+	# taunt on startup
 	info('"Łowy rozpoczęte."')
 	playVoice('rexxar-lowy-rozpoczete')
 	# RUN WINE
-	# LANG settings
-	shellExec('LANG=pl_PL.UTF-8')
+	shellExec('LANG=pl_PL.UTF-8') # LANG settings
 	# 32 bit wine
 	shellExec('export WINEARCH=win32')
 	#shellExec('export WINEPREFIX=/home/thrall/.wine32')
 	# 64 bit wine
 	#shellExec('export WINEARCH=win64')
 	#shellExec('unset WINEPREFIX')
-	errorCode = shellExecErrorCode('wine "Frozen Throne.exe" -opengl')
+	errorCode = shellExecErrorCode('wine "Warcraft III.exe" -opengl')
 	debug('wine error code: %d' % errorCode)
+	# taunt on shutdown
 	info('"Jeszcze jedną kolejkę?"')
+	playVoice('pandarenbrewmaster-jeszcze-jedna-kolejke')
 
-def commandRunAOE2():
-	os.chdir(AOE2_DIR + 'age2_x1/')
-	aoeStachuVersion = readFile(AOE2_DIR + 'stachu-version.txt')
-	info('Running Age of Empires 2 - StachuJones-%s...' % aoeStachuVersion)
-	validateHomeDir()
-	shellExec('aplay %s' % (LICHKING_HOME + 'data/stachu-2.wav'))
-	# LANG settings
-	shellExec('LANG=pl_PL.UTF-8')
-	# 32 bit wine
-	shellExec('export WINEARCH=win32')
-	errorCode = shellExecErrorCode('wine age2_x2.exe -opengl')
-	debug('wine error code: %d' % errorCode)
-
-def commandPlayVoice(argsProcessor):
-	# list available voices
-	if not argsProcessor.hasNextArgument():
+def actionPlayVoice(ap):
+	voiceName = ap.pollNext()
+	if not voiceName or voiceName == 'list': # list available voices - default
 		info('Available voices:')
 		for voiceName in listVoices():
 			print(voiceName)
-	else:
-		voiceName = argsProcessor.popArgument()
-		if voiceName == 'random': # play random voice
-			playRandomVoice()
-		else: # play selected voice
-			playVoice(voiceName)
+	elif voiceName == 'random': # play random voice
+		playRandomVoice()
+	else: # play selected voice
+		playVoice(voiceName)
 
-def commandOpenTips(argsProcessor):
-	tipsName = argsProcessor.popArgument()
-	if tipsName == 'dota':
-		os.chdir(GAME_DIR)
-		shellExec('sublime dota-info.md')
-	elif tipsName is None or tipsName == 'warcraftos':
+def actionTips(ap):
+	tipsName = ap.pollNext()
+	if not tipsName or tipsName == 'warcraftos': # default
 		showWarcraftosInfo()
+	elif tipsName == 'dota':
+		shellExec('sublime %sdota-info.md' % WARCRAFT_DIR)
+	elif tipsName == 'age':
+		shellExec('sublime %sTaunt/cheatsheet.md' % AOE2_DIR)
 	else:
 		fatal('unknown tipsName: %s' % tipsName)
 
-def commandTest(argsProcessor):
-	testName = argsProcessor.popRequiredParam('testName')
+def actionTest(ap):
+	testName = ap.pollNextRequired('testName')
 	if testName == 'audio':
 		testSound()
 	elif testName == 'network':
@@ -144,8 +137,8 @@ def commandTest(argsProcessor):
 	else:
 		fatal('unknown testName: %s' % testName)
 
-def commandScreen(argsProcessor):
-	if not argsProcessor.hasNextArgument():
+def actionScreen(ap):
+	if not ap.hasNext():
 		# list outputs
 		xrandr = shellOutput('xrandr 2>/dev/null | grep " connected"')
 		lines = splitLines(xrandr)
@@ -156,29 +149,81 @@ def commandScreen(argsProcessor):
 		for screenName in lines:
 			print(screenName)
 	else: # set output primary
-		screenName = argsProcessor.popArgument()
+		screenName = ap.pollNext()
 		info('setting screen %s as primary...' % screenName)
 		shellExec('xrandr --output %s --primary' % screenName)
 		info('done')
 
+def actionVsyncSet(ap):
+	state = ap.pollNextRequired('state')
+	if state == 'on':
+		shellExec('export vblank_mode=3')
+		os.environ['vblank_mode'] = '3'
+		info('please execute in parent shell process: export vblank_mode=3')
+	elif state == 'off':
+		os.environ['vblank_mode'] = '0'
+		shellExec('export vblank_mode=0')
+		info('please execute in parent shell process: export vblank_mode=0')
+	else:
+		fatal('unknown state: %s' % state)
+
+# Age
+def actionRunAOE2():
+	setWorkdir(AOE2_DIR + 'age2_x1/')
+	aoeStachuVersion = readFile(AOE2_DIR + 'stachu-version.txt')
+	info('Running Age of Empires 2 - StachuJones-%s...' % aoeStachuVersion)
+	validateHomeDir()
+	playWav(LICHKING_HOME + 'data/stachu-2.wav')
+	# run wine
+	shellExec('LANG=pl_PL.UTF-8') # LANG settings
+	# 32 bit wine
+	shellExec('export WINEARCH=win32')
+	errorCode = shellExecErrorCode('wine age2_x2.exe -opengl')
+	debug('wine error code: %d' % errorCode)
+
+def actionAOETaunt(ap):
+	tauntNumber = ap.pollNext()
+	if not tauntNumber or tauntNumber == 'list': # list available taunts - default
+		info('Available taunts:')
+		tauntsCheatsheet = readFile(AOE2_DIR + 'Taunt/cheatsheet.md')
+		print(tauntsCheatsheet)
+	else: # play selected taunt
+		# preceding zero
+		if len(tauntNumber) == 1:
+			tauntNumber = '0' + tauntNumber
+		# find taunt by number
+		tauntsDir = AOE2_DIR + 'Taunt/'
+		taunts = listDir(tauntsDir)
+		taunts = filter(lambda file: os.path.isfile(tauntsDir + file), taunts)
+		taunts = filter(lambda file: file.startswith(tauntNumber), taunts)
+		taunts = filter(lambda file: file.endswith('.mp3'), taunts)
+		if not taunts:
+			fatal('Taunt with number %s was not found' % tauntNumber)
+		if len(taunts) > 1:
+			warn('too many taunts found')
+		playMp3(tauntsDir + taunts[0])
+
 # ----- Main
-def start():
-	argsProcessor = ArgumentsProcessor('LichKing - WarcraftOS tool', VERSION)
-	argsProcessor.bindCommand(commandRunGame, ['war', 'go'], description='run the game using wine')
-	argsProcessor.bindCommand(commandTest, 'test', description='perform audio test', syntaxSuffix='audio')
-	argsProcessor.bindCommand(commandTest, 'test', description='perform graphics tests', syntaxSuffix='graphics')
-	argsProcessor.bindCommand(commandTest, 'test', description='perform network tests', syntaxSuffix='network')
-	argsProcessor.bindCommand(commandScreen, 'screen', description='list available screens')
-	argsProcessor.bindCommand(commandScreen, 'screen', description='set screen as primary', syntaxSuffix='[screenName]')
-	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='list available voices')
-	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play selected voice sound', syntaxSuffix='[voiceName]')
-	argsProcessor.bindCommand(commandPlayVoice, 'voice', description='play random voice sound', syntaxSuffix='random')
-	argsProcessor.bindCommand(commandOpenTips, 'info', description='show WarcraftOS info', syntaxSuffix='[warcraftos]')
-	argsProcessor.bindCommand(commandOpenTips, 'info', description='open Dota tips', syntaxSuffix='dota')
-	argsProcessor.bindCommand(commandRunAOE2, ['age', 'aoe'], description='run AOE2 using wine')
-	argsProcessor.bindOption(printHelp, ['-h', '--help', 'help'], description='display this help and exit')
-	argsProcessor.bindOption(printVersion, ['-v', '--version'], description='print version number and exit')
+def main():
+	ap = ArgsProcessor('LichKing - WarcraftOS tool', VERSION)
+	ap.bindCommand(actionRunWar3, ['war', 'go'], description='run Warcraft3 using wine')
+	ap.bindCommand(actionRunAOE2, ['age', 'aoe'], description='run AOE2 using wine')
+	ap.bindCommand(actionTest, 'test', description='perform continuous audio test', syntaxSuffix='audio')
+	ap.bindCommand(actionTest, 'test', description='perform graphics tests', syntaxSuffix='graphics')
+	ap.bindCommand(actionTest, 'test', description='perform network tests', syntaxSuffix='network')
+	ap.bindCommand(actionScreen, 'screen', description='list available screens')
+	ap.bindCommand(actionScreen, 'screen', description='set screen as primary', syntaxSuffix='<screenName>')
+	ap.bindCommand(actionVsyncSet, 'vsync', description='enable / disable VSync', syntaxSuffix='<on|off>')
+	ap.bindCommand(actionPlayVoice, 'voice', description='list available voices', syntaxSuffix='[list]')
+	ap.bindCommand(actionPlayVoice, 'voice', description='play selected voice sound', syntaxSuffix='<voiceName>')
+	ap.bindCommand(actionPlayVoice, 'voice', description='play random voice sound', syntaxSuffix='random')
+	ap.bindCommand(actionTips, 'info', description='show WarcraftOS info', syntaxSuffix='[warcraftos]')
+	ap.bindCommand(actionTips, 'info', description='open Dota cheatsheet', syntaxSuffix='dota')
+	ap.bindCommand(actionTips, 'info', description='open AOE2 Taunts cheatsheet', syntaxSuffix='age')
+	ap.bindCommand(actionAOETaunt, 'taunt', description='list available AOE2 Taunts', syntaxSuffix='[list]')
+	ap.bindCommand(actionAOETaunt, 'taunt', description='play AOE2 Taunt', syntaxSuffix='<tauntNumber>')
 
-	argsProcessor.processAll()
+	ap.processAll() # do the magic
 
-start()
+if __name__ == '__main__': # for testing purposes
+	main() # will not be invoked when importing this file
