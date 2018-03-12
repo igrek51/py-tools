@@ -250,7 +250,9 @@ def actionReport(argsProcessor):
         actionReportMonth(argsProcessor)
 
 def actionEdit(argsProcessor):
-    editor = argsProcessor.pollNextRequired('editor')
+    editor = argsProcessor.pollRemainingJoined(' ')
+    if not editor:
+        fatal('no editor given')
     # open in external editor
     dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
     shellExec(editor + ' ' + dbPath)

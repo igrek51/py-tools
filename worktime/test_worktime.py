@@ -268,3 +268,5 @@ def test_externalEdit():
     with mockArgs(['edit', 'rm']), mockOutput() as out:
         worktime.main()
         assert not fileExists(worktime.DB_FILE_PATH)
+    with mockArgs(['edit']), mockOutput() as out:
+        assertError(lambda: worktime.main(), 'no editor given')
