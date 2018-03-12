@@ -249,21 +249,28 @@ def actionReport(argsProcessor):
     else:
         actionReportMonth(argsProcessor)
 
+def actionEdit(argsProcessor):
+    editor = argsProcessor.pollNextRequired('editor')
+    # open in external editor
+    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
+    shellExec(editor + ' ' + dbPath)
+
 # ----- Main
 def main():
-    argsProcessor = ArgsProcessor('Worktime registering and reporting tool', '1.1.0')
+    ap = ArgsProcessor('Worktime registering and reporting tool', '1.1.0')
 
-    argsProcessor.bindDefaultAction(actionShowUptime)
-    argsProcessor.bindCommand(actionShowUptime, 'uptime', description='show today uptime')
-    argsProcessor.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customStartTime>')
-    argsProcessor.bindCommand(actionSetEndTime, 'end', description='save custom end time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customEndTime>')
-    argsProcessor.bindCommand(actionReport, 'report', description='show current month report')
-    argsProcessor.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
-    argsProcessor.bindCommand(actionReport, 'report', description='show all records report', syntaxSuffix='all')
-    argsProcessor.bindParam('fromDate', syntax='--from', description='set report starting date ("YYYY-mm-dd", "mm-dd" or "dd")')
-    argsProcessor.bindParam('toDate', syntax='--to', description='set report ending date ("YYYY-mm-dd", "mm-dd" or "dd")')
+    ap.bindDefaultAction(actionShowUptime)
+    ap.bindCommand(actionShowUptime, 'uptime', description='show today uptime')
+    ap.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customStartTime>')
+    ap.bindCommand(actionSetEndTime, 'end', description='save custom end time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customEndTime>')
+    ap.bindCommand(actionReport, 'report', description='show current month report')
+    ap.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
+    ap.bindCommand(actionReport, 'report', description='show all records report', syntaxSuffix='all')
+    ap.bindCommand(actionEdit, 'edit', syntaxSuffix='<editor>', description='open db in external editor')
+    ap.bindParam('fromDate', syntax='--from', description='set report starting date ("YYYY-mm-dd", "mm-dd" or "dd")')
+    ap.bindParam('toDate', syntax='--to', description='set report ending date ("YYYY-mm-dd", "mm-dd" or "dd")')
 
-    argsProcessor.processAll()
+    ap.processAll()
 
 if __name__ == '__main__': # for testing purposes
     main() # will not be invoked when importing this file

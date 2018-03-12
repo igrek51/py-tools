@@ -260,3 +260,11 @@ def test_actionReportDateRange():
         worktime.main()
         assert 'Report for date range: 1951-03-23 - 1951-03-23' in out.getvalue()
         assert 'Days: 1' in out.getvalue()
+
+def test_externalEdit():
+    worktime.DB_FILE_PATH = 'test/hours-test'
+    dbTxt = ('1951-03-21\t09:01:00\t15:02:00\n') # 6:01:00
+    saveFile(worktime.DB_FILE_PATH, dbTxt)
+    with mockArgs(['edit', 'rm']), mockOutput() as out:
+        worktime.main()
+        assert not fileExists(worktime.DB_FILE_PATH)
