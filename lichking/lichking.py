@@ -7,14 +7,7 @@ WARCRAFT_DIR = '/home/thrall/games/warcraft-3-pl/'
 AOE2_DIR = '/home/thrall/games/aoe2/'
 LICHKING_HOME = '/home/thrall/lichking/'
 OS_VERSION = '/home/thrall/.osversion'
-VERSION = '1.14.4'
-
-def listVoices():
-	voicesDir = getVoicesDir()
-	voices = listDir(voicesDir)
-	voices = filter(lambda file: os.path.isfile(voicesDir + file), voices)
-	voices = filter(lambda file: file.endswith('.wav'), voices)
-	return map(lambda file: file[:-4], voices)
+VERSION = '1.15.5'
 
 def playWav(path):
 	shellExec('aplay %s' % path)
@@ -30,6 +23,13 @@ def playVoice(voiceName):
 		error('no voice file named %s' % voiceName)
 	else:
 		playWav(voicesDir + voiceName)
+
+def listVoices():
+	voicesDir = getVoicesDir()
+	voices = listDir(voicesDir)
+	voices = filter(lambda file: os.path.isfile(voicesDir + file), voices)
+	voices = filter(lambda file: file.endswith('.wav'), voices)
+	return map(lambda file: file[:-4], voices)
 
 def playRandomVoice():
 	# populate voices list
@@ -88,8 +88,7 @@ def showWarcraftosInfo():
 def actionRunWar3():
 	setWorkdir(WARCRAFT_DIR)
 	# taunt on startup
-	info('"Łowy rozpoczęte."')
-	playVoice('rexxar-lowy-rozpoczete')
+	playRandomVoice()
 	# RUN WINE
 	shellExec('LANG=pl_PL.UTF-8') # LANG settings
 	# 32 bit wine
@@ -120,7 +119,7 @@ def actionTips(ap):
 	if not tipsName or tipsName == 'warcraftos': # default
 		showWarcraftosInfo()
 	elif tipsName == 'dota':
-		shellExec('sublime %sdota-info.md' % WARCRAFT_DIR)
+		shellExec('sublime %swar-info/dota-info.md' % WARCRAFT_DIR)
 	elif tipsName == 'age':
 		shellExec('sublime %sTaunt/cheatsheet.md' % AOE2_DIR)
 	else:
@@ -176,10 +175,10 @@ def actionRunAOE2():
 	playWav(LICHKING_HOME + 'data/stachu-2.wav')
 	# run wine
 	shellExec('LANG=pl_PL.UTF-8') # LANG settings
-	# 32 bit wine
-	shellExec('export WINEARCH=win32')
+	shellExec('export WINEARCH=win32') # 32 bit wine
 	errorCode = shellExecErrorCode('wine age2_x2.exe -opengl')
 	debug('wine error code: %d' % errorCode)
+	playWav(LICHKING_HOME + 'data/dowiesz-sie-8.wav')
 
 def actionAOETaunt(ap):
 	tauntNumber = ap.pollNext()
