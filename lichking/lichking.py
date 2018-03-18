@@ -7,7 +7,7 @@ WARCRAFT_DIR = '/home/thrall/games/warcraft-3-pl/'
 AOE2_DIR = '/home/thrall/games/aoe2/'
 LICHKING_HOME = '/home/thrall/lichking/'
 OS_VERSION = '/home/thrall/.osversion'
-VERSION = '1.16.1'
+VERSION = '1.16.4'
 
 def playWav(path):
     shellExec('aplay %s' % path)
@@ -24,16 +24,18 @@ def playVoice(voiceName):
     else:
         playWav(voicesDir + voiceName)
 
-def listVoices():
-    voicesDir = getVoicesDir()
+def listVoices(subdir=''):
+    voicesDir = getVoicesDir() + subdir
     voices = listDir(voicesDir)
     voices = filter(lambda file: os.path.isfile(voicesDir + file), voices)
     voices = filter(lambda file: file.endswith('.wav'), voices)
-    return map(lambda file: file[:-4], voices)
+    return map(lambda file: subdir + file[:-4], voices)
 
-def playRandomVoice():
+def playRandomVoice(subdir=''):
+    if subdir and not subdir.endswith('/'):
+        subdir += '/'
     # populate voices list
-    voices = listVoices()
+    voices = listVoices(subdir)
     # draw random voice
     if not voices:
         fatal('no voice available')
@@ -96,6 +98,16 @@ def disableIPv6():
     shellExec('sudo sysctl -p')
     info('IPv6 has been disabled')
 
+def listScreens():
+    # list outputs
+    xrandr = shellOutput('xrandr 2>/dev/null')
+    lines = splitLines(xrandr)
+    lines = regexFilterLines(lines, r'^([a-zA-Z0-9\-]+) connected')
+    lines = regexReplaceLines(lines, r'^([a-zA-Z0-9\-]+) connected[a-z ]*([0-9]+)x([0-9]+).*', '\\1\t\\2\t\\3')
+    if not lines:
+        fatal('no xrandr outputs - something\'s fucked up')
+    return splitToTuples('\n'.join(lines), 3, '\t')
+
 # ----- Actions
 def actionRunWar3():
     setWorkdir(WARCRAFT_DIR)
@@ -112,8 +124,7 @@ def actionRunWar3():
     errorCode = shellExecErrorCode('wine "Warcraft III.exe" -opengl')
     debug('wine error code: %d' % errorCode)
     # taunt on shutdown
-    info('"Jeszcze jedną kolejkę?"')
-    playVoice('pandarenbrewmaster-jeszcze-jedna-kolejke')
+    playRandomVoice('war-close')
 
 def actionPlayVoice(ap):
     voiceName = ap.pollNext()
@@ -125,6 +136,10 @@ def actionPlayVoice(ap):
         playRandomVoice()
     else: # play selected voice
         playVoice(voiceName)
+
+def actionPlayVoices(ap):
+    group = ap.pollNextRequired('group')
+    playRandomVoice(group)
 
 def actionTips(ap):
     tipsName = ap.pollNext()
@@ -158,19 +173,26 @@ def actionConfigNetwork(ap):
         fatal('unknown comamndName: %s' % comamndName)
 
 def actionScreen(ap):
-    if not ap.hasNext():
-        # list outputs
-        xrandr = shellOutput('xrandr 2>/dev/null | grep " connected"')
-        lines = splitLines(xrandr)
-        lines = regexReplaceLines(lines, r'^([a-zA-Z0-9\-]+).*', '\\1')
-        if not lines:
-            fatal('no xrandr outputs - something\'s fucked up')
+    screenName = ap.pollNext()
+    if not screenName or screenName == 'list':
         info('Available screens:')
-        for screenName in lines:
-            print(screenName)
+        for screenName2, w, h in listScreens():
+            print(screenName2)
+    elif screenName == 'largest': # auto select largest screen
+        largestScreen = None
+        largestSize = 0
+        for screenName2, w, h in listScreens():
+            size = int(w) * int(h)
+            if size > largestSize:
+                largestSize = size
+                largestScreen = screenName2
+        if not largestScreen:
+            fatal('largest screen not found')
+        info('setting largest screen "%s" as primary...' % largestScreen)
+        shellExec('xrandr --output %s --primary' % largestScreen)
+        info('done')
     else: # set output primary
-        screenName = ap.pollNext()
-        info('setting screen %s as primary...' % screenName)
+        info('setting screen "%s" as primary...' % screenName)
         shellExec('xrandr --output %s --primary' % screenName)
         info('done')
 
@@ -199,7 +221,7 @@ def actionRunAOE2():
     shellExec('export WINEARCH=win32') # 32 bit wine
     errorCode = shellExecErrorCode('wine age2_x2.exe -opengl')
     debug('wine error code: %d' % errorCode)
-    playWav(LICHKING_HOME + 'data/dowiesz-sie-8.wav')
+    playWav(LICHKING_HOME + 'data/pierdol-sie-8.wav')
 
 def actionAOETaunt(ap):
     tauntNumber = ap.pollNext()
@@ -231,14 +253,16 @@ def main():
     ap.bindCommand(actionTest, 'test', description='perform continuous audio test', syntaxSuffix='audio')
     ap.bindCommand(actionTest, 'test', description='perform graphics tests', syntaxSuffix='graphics')
     ap.bindCommand(actionTest, 'test', description='perform network tests', syntaxSuffix='network')
-    ap.bindCommand(actionTest, 'test', description='perform wine test', syntaxSuffix='wine')
-    ap.bindCommand(actionScreen, 'screen', description='list available screens')
+    ap.bindCommand(actionTest, 'test', description='perform wine tests', syntaxSuffix='wine')
+    ap.bindCommand(actionScreen, 'screen', description='list available screens', syntaxSuffix='[list]')
     ap.bindCommand(actionScreen, 'screen', description='set screen as primary', syntaxSuffix='<screenName>')
+    ap.bindCommand(actionScreen, 'screen', description='automatically set largest screen as primary', syntaxSuffix='largest')
     ap.bindCommand(actionConfigNetwork, 'network', description='disable IPv6 (IPv4 only)', syntaxSuffix='noipv6')
     ap.bindCommand(actionVsyncSet, 'vsync', description='enable / disable VSync', syntaxSuffix='<on|off>')
     ap.bindCommand(actionPlayVoice, 'voice', description='list available voices', syntaxSuffix='[list]')
     ap.bindCommand(actionPlayVoice, 'voice', description='play selected voice sound', syntaxSuffix='<voiceName>')
     ap.bindCommand(actionPlayVoice, 'voice', description='play random voice sound', syntaxSuffix='random')
+    ap.bindCommand(actionPlayVoices, 'voices', description='play random voice from a group', syntaxSuffix='<group>')
     ap.bindCommand(actionTips, 'info', description='show WarcraftOS info', syntaxSuffix='[warcraftos]')
     ap.bindCommand(actionTips, 'info', description='open Dota cheatsheet', syntaxSuffix='dota')
     ap.bindCommand(actionTips, 'info', description='open AOE2 Taunts cheatsheet', syntaxSuffix='age')
