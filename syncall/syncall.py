@@ -15,6 +15,8 @@ def main():
 				if 'Your branch is ahead' in statusOutput:
 					debug('pushing - %s...' % d)
 					shellExec('git push')
+				if 'Changes not staged for commit' in statusOutput:
+					warn('Changes not staged for commit - %s' % d)
 			setWorkdir(wd)
 
 if __name__ == '__main__': # for testing purposes
