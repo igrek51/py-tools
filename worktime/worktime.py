@@ -265,7 +265,7 @@ def main():
     ap.bindCommand(actionShowUptime, 'uptime', description='show today uptime')
     ap.bindCommand(actionSetStartTime, 'start', description='save custom start time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customStartTime>')
     ap.bindCommand(actionSetEndTime, 'end', description='save custom end time ("HH:MM:SS", "HH:MM" or "HH")', syntaxSuffix='<customEndTime>')
-    ap.bindCommand(actionReport, 'report', description='show current month report')
+    ap.bindCommand(actionReport, ['report', 'r'], description='show current month report')
     ap.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
     ap.bindCommand(actionReport, 'report', description='show all records report', syntaxSuffix='all')
     ap.bindCommand(actionEdit, 'edit', syntaxSuffix='<editor>', description='open db in external editor')
