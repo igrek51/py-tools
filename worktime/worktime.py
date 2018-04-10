@@ -127,6 +127,41 @@ def showUptime(lastWork):
     info('Uptime:     %s' % uptime(lastWork.startTime, lastWork.endTime))
     info('8h diff:    %s' % formatDuration(elapsedS - 8 * 3600))
 
+def isDatetimeInRange(datetime, fromTime, toTime):
+    if fromTime and toTime:
+        return (not isBefore(datetime, fromTime)) and (not isBefore(toTime, datetime))
+    elif fromTime:
+        return not isBefore(datetime, fromTime)
+    elif toTime:
+        return not isBefore(toTime, datetime)
+    else:
+        return True
+
+def endOfDay(datetime):
+    endDayStr = time2str(datetime, DATE_FORMAT) + ', 23:59:59'
+    return str2time(endDayStr, DATE_FORMAT + ', %H:%M:%S')
+
+def setStartTimeDecorator(argsProcessor, lastWork):
+    customTimeStr = argsProcessor.pollNextRequired('customStartTime')
+    customTime = parseDatetime(customTimeStr, now)
+    if not customTime:
+        fatal('invalid date format: %s' % customTimeStr)
+    lastWork.startTime = customTime
+
+def setEndTimeDecorator(argsProcessor, lastWork):
+    customTimeStr = argsProcessor.pollNextRequired('customEndTime')
+    customTime = parseDatetime(customTimeStr, now)
+    if not customTime:
+        fatal('invalid date format: %s' % customTimeStr)
+    lastWork.endTime = customTime
+
+def getReportDateRange(argsProcessor):
+    fromDateStr = argsProcessor.getParam('fromDate')
+    fromDate = parseDay(fromDateStr, now) if fromDateStr else None
+    toDateStr = argsProcessor.getParam('toDate')
+    toDate = parseDay(toDateStr, now) if toDateStr else None
+    return (fromDate, toDate)
+
 def showReport(works):
     elapsedSum = 0
     for work in works:
@@ -144,110 +179,72 @@ def showReport(works):
         info('Avg: %s' % formatDuration(elapsedSum // recordsCount))
         info('avg8h diff: %s' % formatDuration(elapsedSum - recordsCount * 8 * 3600))
 
-def getReportDateRange(argsProcessor):
-    fromDateStr = argsProcessor.getParam('fromDate')
-    fromDate = parseDay(fromDateStr, now) if fromDateStr else None
-    toDateStr = argsProcessor.getParam('toDate')
-    toDate = parseDay(toDateStr, now) if toDateStr else None
-    return (fromDate, toDate)
-
-def isDatetimeInRange(datetime, fromTime, toTime):
-    if fromTime and toTime:
-        return (not isBefore(datetime, fromTime)) and (not isBefore(toTime, datetime))
-    elif fromTime:
-        return not isBefore(datetime, fromTime)
-    elif toTime:
-        return not isBefore(toTime, datetime)
-    else:
-        return True
-
-def endOfDay(datetime):
-    endDayStr = time2str(datetime, DATE_FORMAT) + ', 23:59:59'
-    return str2time(endDayStr, DATE_FORMAT + ', %H:%M:%S')
-
-def reportDateRange(fromDate, toDate):
-    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
-    db = loadHoursDB(dbPath)
+def daysRangeWorksFilter(db, argsProcessor):
+    fromDate, toDate = getReportDateRange(argsProcessor)
     # complete missing date ranges
     if toDate:
         toDate = endOfDay(toDate)
     fromDateStr = time2str(fromDate, DATE_FORMAT) if fromDate else None
     toDateStr = time2str(toDate, DATE_FORMAT) if toDate else None
     info('Report for date range: %s - %s' % (fromDateStr, toDateStr))
-    works = list(filter(lambda w: isDatetimeInRange(w.startTime, fromDate, toDate), db))
-    showReport(works)
+    return list(filter(lambda w: isDatetimeInRange(w.startTime, fromDate, toDate), db))
 
-# ----- Actions
-def actionShowUptime(argsProcessor):
-    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
-    db = loadHoursDB(dbPath)
-    lastWork = updateTime(db)
-
-    showUptime(lastWork)
-    saveHoursDB(dbPath, db)
-
-def actionSetStartTime(argsProcessor):
-    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
-    db = loadHoursDB(dbPath)
-    lastWork = updateTime(db)
-
-    customTimeStr = argsProcessor.pollNextRequired('customStartTime')
-    customTime = parseDatetime(customTimeStr, now)
-    if not customTime:
-        fatal('invalid date format: %s' % customTimeStr)
-    lastWork.startTime = customTime
-
-    showUptime(lastWork)
-    saveHoursDB(dbPath, db)
-
-def actionSetEndTime(argsProcessor):
-    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
-    db = loadHoursDB(dbPath)
-    lastWork = updateTime(db)
-
-    customTimeStr = argsProcessor.pollNextRequired('customEndTime')
-    customTime = parseDatetime(customTimeStr, now)
-    if not customTime:
-        fatal('invalid date format: %s' % customTimeStr)
-    lastWork.endTime = customTime
-
-    showUptime(lastWork)
-    saveHoursDB(dbPath, db)
-
-def actionReportMonth(argsProcessor):
-    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
-    db = loadHoursDB(dbPath)
-    
+def monthWorksFilter(db, argsProcessor):
     if argsProcessor.hasNext():
         reportMonthTime = parseMonth(argsProcessor.pollNext(), now)
         reportMonth = time2str(reportMonthTime, MONTH_FORMAT)
     else:
         reportMonth = time2str(now, MONTH_FORMAT)
-
     info('Monthly report for: %s' % reportMonth)
-    works = list(filter(lambda w: time2str(w.startTime, MONTH_FORMAT) == reportMonth, db))
-    showReport(works)
+    return list(filter(lambda w: time2str(w.startTime, MONTH_FORMAT) == reportMonth, db))
 
-def actionReportAll(argsProcessor):
+def allWorksFilter(db, argsProcessor):
+    info('All records report:')
+    return db
+
+def reportDays(argsProcessor, worksFilter):
     dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
     db = loadHoursDB(dbPath)
-    info('All records report:')
-    showReport(db)
+    if argsProcessor.isFlag('update'):
+        updateTime(db)
+        saveHoursDB(dbPath, db)
+
+    works = worksFilter(db, argsProcessor)
+
+    showReport(works)
+
+# ----- Actions
+def actionShowUptime(argsProcessor, decorator=None):
+    dbPath = os.path.join(getScriptRealDir(), DB_FILE_PATH)
+    db = loadHoursDB(dbPath)
+    lastWork = updateTime(db)
+
+    if decorator:
+        decorator(argsProcessor, lastWork)
+
+    showUptime(lastWork)
+    saveHoursDB(dbPath, db)
+
+def actionSetStartTime(argsProcessor):
+    actionShowUptime(argsProcessor, setStartTimeDecorator)
+
+def actionSetEndTime(argsProcessor):
+    actionShowUptime(argsProcessor, setEndTimeDecorator)
 
 def actionReport(argsProcessor):
     (fromDate, toDate) = getReportDateRange(argsProcessor)
     if fromDate or toDate:
-        reportDateRange(fromDate, toDate)
+        reportDays(argsProcessor, daysRangeWorksFilter)
     elif argsProcessor.hasNext():
         reportType = argsProcessor.pollNext()
         if reportType == 'month':
-            actionReportMonth(argsProcessor)
+            reportDays(argsProcessor, monthWorksFilter)
         elif reportType == 'all':
-            actionReportAll(argsProcessor)
+            reportDays(argsProcessor, allWorksFilter)
         else:
             fatal('unknown report type: %s' % reportType)
     else:
-        actionReportMonth(argsProcessor)
+        reportDays(argsProcessor, monthWorksFilter)
 
 def actionEdit(argsProcessor):
     editor = argsProcessor.pollRemainingJoined(' ')
@@ -269,6 +266,7 @@ def main():
     ap.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
     ap.bindCommand(actionReport, 'report', description='show all records report', syntaxSuffix='all')
     ap.bindCommand(actionEdit, 'edit', syntaxSuffix='<editor>', description='open db in external editor')
+    ap.bindFlag('update', description='update last end time')
     ap.bindParam('fromDate', syntax='--from', description='set report starting date ("YYYY-mm-dd", "mm-dd" or "dd")')
     ap.bindParam('toDate', syntax='--to', description='set report ending date ("YYYY-mm-dd", "mm-dd" or "dd")')
 
