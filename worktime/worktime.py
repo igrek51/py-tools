@@ -266,7 +266,7 @@ def main():
     ap.bindCommand(actionReport, 'report', description='show monthly report, month formats: YYYY-mm or mm', syntaxSuffix='month [<month>]')
     ap.bindCommand(actionReport, 'report', description='show all records report', syntaxSuffix='all')
     ap.bindCommand(actionEdit, 'edit', syntaxSuffix='<editor>', description='open db in external editor')
-    ap.bindFlag('update', description='update last end time')
+    ap.bindFlag('update', syntax=['-u', '--update'], description='update last end time')
     ap.bindParam('fromDate', syntax='--from', description='set report starting date ("YYYY-mm-dd", "mm-dd" or "dd")')
     ap.bindParam('toDate', syntax='--to', description='set report ending date ("YYYY-mm-dd", "mm-dd" or "dd")')
 
