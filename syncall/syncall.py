@@ -2,6 +2,10 @@
 from glue import *
 
 def main():
+	# secure connection
+	shellExec('nmcli device disconnect wlp2s0')
+	shellExec('nmcli connection up id RelayWifirifi')
+
 	for d in listDir('.'):
 		if os.path.isdir(d):
 			wd = getWorkdir()
@@ -18,6 +22,8 @@ def main():
 				if 'Changes not staged for commit' in statusOutput:
 					warn('Changes not staged for commit - %s' % d)
 			setWorkdir(wd)
+	# Restore connection
+	shellExec('nmcli connection down id RelayWifirifi')
 
 if __name__ == '__main__': # for testing purposes
 	main() # this will not be invoked when importing this file
