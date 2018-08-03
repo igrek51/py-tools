@@ -3,8 +3,8 @@ from glue import *
 
 def main():
 	# secure connection
-	shellExec('nmcli device disconnect wlp2s0')
-	shellExec('nmcli connection up id RelayWifirifi')
+	#shellExec('nmcli device disconnect wlp2s0')
+	#shellExec('nmcli connection up id "Auto MartinRouterPing"')
 
 	for d in listDir('.'):
 		if os.path.isdir(d):
@@ -23,7 +23,7 @@ def main():
 					warn('Changes not staged for commit - %s' % d)
 			setWorkdir(wd)
 	# Restore connection
-	shellExec('nmcli connection down id RelayWifirifi')
+	#shellExec('nmcli connection down id "Auto MartinRouterPing"')
 
 if __name__ == '__main__': # for testing purposes
 	main() # this will not be invoked when importing this file
