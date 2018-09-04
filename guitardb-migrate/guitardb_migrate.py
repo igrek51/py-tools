@@ -7,6 +7,13 @@ import time
 
 NOW = datetime.datetime.now()
 
+lockedDict = {
+	'Z jajem': 'zjajem',
+	'BFF': 'bff',
+	'Inżynier': 'engineer',
+	'Religijne': 'religijne'
+}
+
 # ----- Actions
 def actionMigrate(ap):
 	inputDir = ap.getParam('input')
@@ -77,9 +84,9 @@ def addSong(c, inputDir, category, filename):
 	# lock
 	locked = 0
 	lockPassword = None
-	if category in ['Z jajem', 'BFF', 'Inżynier', 'Religijne']:
+	if category in lockedDict:
 		locked = 1
-		lockPassword = category.decode('utf-8')
+		lockPassword = lockedDict[category].decode('utf-8')
 	# content trim, comments read
 	lines = splitLines(fileContent)
 	firstLine = lines[0]
