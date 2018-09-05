@@ -88,7 +88,7 @@ def addSong(c, inputDir, category, filename):
 		locked = 1
 		lockPassword = lockedDict[category].decode('utf-8')
 	# content trim, comments read
-	lines = splitLines(fileContent)
+	lines = fileContent.splitlines()
 	firstLine = lines[0]
 	comment = None
 	preferredKey = None
