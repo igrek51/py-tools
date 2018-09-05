@@ -6,6 +6,9 @@ import datetime
 import time
 
 NOW = datetime.datetime.now()
+DB_VERSION_NUMBER = 2
+
+categoriesIdDict = {}
 
 lockedDict = {
 	'Z jajem': 'zjajem',
@@ -25,25 +28,24 @@ def actionMigrate(ap):
 	# clear file before
 	if os.path.exists(outputDb):
   		os.remove(outputDb)
-	
+	# sql connection
 	conn = sqlite3.connect(outputDb)
 	c = conn.cursor()
-
 	createSchema(c)
-	insertDbInfo(c)
+	addDbInfo(c)
+	addCategories(c, inputDir)
 	addSongs(c, inputDir)
 	# Save (commit) the changes
 	conn.commit()
-	# Just be sure any changes have been committed or they will be lost.
 	conn.close()
 
 def createSchema(c):
 	# Create tables
 	c.execute('''CREATE TABLE songs (
 		id integer PRIMARY KEY,
-		fileContent text NOT NULL,
 		title text NOT NULL,
-		categoryName text,
+		categoryId integer NOT NULL,
+		fileContent text,
 		versionNumber integer NOT NULL,
 		updateTime integer,
 		custom integer NOT NULL,
@@ -51,33 +53,68 @@ def createSchema(c):
 		comment text,
 		preferredKey text,
 		locked integer NOT NULL,
-		lockPassword text
+		lockPassword text,
+		author text
+		);''')
+	c.execute('''CREATE TABLE categories (
+		id integer PRIMARY KEY,
+		typeId integer NOT NULL,
+		name text
 		);''')
 	c.execute('''CREATE TABLE info (
 		name text,
 		value text
 		);''')
 
-def insertDbInfo(c):
+def addDbInfo(c):
 	c.execute('''INSERT INTO info (name, value)
 		VALUES ('versionDate', ?);''',
 		(time2str(NOW, '%Y-%m-%d'),))
+	c.execute('''INSERT INTO info (name, value)
+		VALUES ('versionTimestamp', ?);''',
+		(int(time.mktime(NOW.timetuple())),))
+	c.execute('''INSERT INTO info (name, value)
+		VALUES ('versionNumber', ?);''',
+		(DB_VERSION_NUMBER,))
+
+def listCategories(inputDir):
+	return filter(lambda d: os.path.isdir(os.path.join(inputDir, d)) and not d.startswith('.'), listDir(inputDir))
+
+def addCategories(c, inputDir):
+	for category in listCategories(inputDir):
+		addCategory(c, inputDir, category)
+
+def addCategory(c, inputDir, categoryName0):
+	typeId = 1
+	categoryName = categoryName0
+	if categoryName == '0thers':
+		typeId = 3
+		categoryName = None
+	# inserting record
+	c.execute('SELECT MAX(id) AS id FROM categories')
+	identifier = c.fetchone()[0]
+	identifier = 1 if not identifier else identifier + 1
+	c.execute('''INSERT INTO categories
+		(id, typeId, name)
+		VALUES (?, ?, ?);
+		''', (identifier, typeId, None if not categoryName else categoryName.decode('utf-8')))
+	categoriesIdDict[categoryName0] = identifier
+	info('category saved: %d - %s' % (identifier, categoryName))
 
 def addSongs(c, inputDir):
-	categories = filter(lambda d: os.path.isdir(os.path.join(inputDir, d)) and not d.startswith('.'), listDir(inputDir))
-	for category in categories:
+	for category in listCategories(inputDir):
 		subdirPath = os.path.join(inputDir, category)
+		categoryId = categoriesIdDict[category]
 		names = listDir(subdirPath)
 		for filename in names:
-			addSong(c, inputDir, category, filename)
+			addSong(c, inputDir, category, categoryId, filename)
 
-def addSong(c, inputDir, category, filename):
+def addSong(c, inputDir, category, categoryId, filename):
 	songname = filename.capitalize()
 	if songname.endswith('.crd'):
 		songname = songname[:-4]
 	fullPath = os.path.join(inputDir, category, filename)
 	fileContent = readFile(fullPath).encode('utf-8')
-	categoryName = None if category == '0thers' else category.decode('utf-8')
 	versionNumber = 1
 	updateTime = time.mktime(NOW.timetuple())
 	custom = 0
@@ -99,23 +136,23 @@ def addSong(c, inputDir, category, filename):
 		comment = None
 		fileContent = '\n'.join(lines[1:])
 	fileContent = fileContent.strip()
+	author = 'igrek'
 	# inserting record
 	c.execute('SELECT MAX(id) AS id FROM songs')
 	identifier = c.fetchone()[0]
 	identifier = 1 if not identifier else identifier + 1
 	c.execute('''INSERT INTO songs
 		(id,
-		fileContent, title, categoryName,
+		fileContent, title, categoryId,
 		versionNumber, updateTime,custom,filename,
-		comment,preferredKey,locked,lockPassword)
+		comment,preferredKey,locked,lockPassword, author)
 		VALUES (?, ?, ?, ?,
 		?, ?, ?, ?,
-		?, ?, ?, ?);
+		?, ?, ?, ?, ?);
 		''', (identifier, fileContent.decode('utf-8'), songname.decode('utf-8'),
-			categoryName,
+			categoryId,
 			versionNumber, updateTime, custom, filename.decode('utf-8'),
-			comment, preferredKey, locked, lockPassword))
-
+			comment, preferredKey, locked, lockPassword, author))
 	info('song saved: %d - %s - %s' % (identifier, category, songname))
 
 # ----- Main
