@@ -6,7 +6,7 @@ import datetime
 import time
 
 NOW = datetime.datetime.now()
-DB_VERSION_NUMBER = 2
+DB_VERSION_NUMBER = 3
 
 categoriesIdDict = {}
 
@@ -87,6 +87,7 @@ def addCategories(c, inputDir):
 def addCategory(c, inputDir, categoryName0):
 	typeId = 1
 	categoryName = categoryName0
+	categoryName = categoryName.replace('-', '/') # AC-DC
 	if categoryName == '0thers':
 		typeId = 3
 		categoryName = None
@@ -110,7 +111,7 @@ def addSongs(c, inputDir):
 			addSong(c, inputDir, category, categoryId, filename)
 
 def addSong(c, inputDir, category, categoryId, filename):
-	songname = filename.capitalize()
+	songname = filename[0].capitalize() + filename[1:]
 	if songname.endswith('.crd'):
 		songname = songname[:-4]
 	fullPath = os.path.join(inputDir, category, filename)
