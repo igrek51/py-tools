@@ -6,13 +6,12 @@ import datetime
 import time
 
 NOW = datetime.datetime.now()
-DB_VERSION_NUMBER = 3
 
 categoriesIdDict = {}
 
 lockedDict = {
 	'Z jajem': 'zjajem',
-	'BFF': 'bff',
+	'Bracia Figo Fagot': 'bff',
 	'Inżynier': 'engineer',
 	'Religijne': 'religijne'
 }
@@ -25,6 +24,9 @@ def actionMigrate(ap):
 	outputDb = ap.getParam('output')
 	if not outputDb:
 		fatal('no output parameter')
+	versionNumber = ap.getParam('versionNumber')
+	if not versionNumber:
+		fatal('no versionNumber parameter')
 	# clear file before
 	if os.path.exists(outputDb):
   		os.remove(outputDb)
@@ -32,7 +34,7 @@ def actionMigrate(ap):
 	conn = sqlite3.connect(outputDb)
 	c = conn.cursor()
 	createSchema(c)
-	addDbInfo(c)
+	addDbInfo(c, versionNumber)
 	addCategories(c, inputDir)
 	addSongs(c, inputDir)
 	# Save (commit) the changes
@@ -66,7 +68,7 @@ def createSchema(c):
 		value text
 		);''')
 
-def addDbInfo(c):
+def addDbInfo(c, versionNumber):
 	c.execute('''INSERT INTO info (name, value)
 		VALUES ('versionDate', ?);''',
 		(time2str(NOW, '%Y-%m-%d'),))
@@ -75,7 +77,7 @@ def addDbInfo(c):
 		(int(time.mktime(NOW.timetuple())),))
 	c.execute('''INSERT INTO info (name, value)
 		VALUES ('versionNumber', ?);''',
-		(DB_VERSION_NUMBER,))
+		(versionNumber,))
 
 def listCategories(inputDir):
 	return filter(lambda d: os.path.isdir(os.path.join(inputDir, d)) and not d.startswith('.'), listDir(inputDir))
@@ -131,7 +133,7 @@ def addSong(c, inputDir, category, categoryId, filename):
 	comment = None
 	preferredKey = None
 	if regexMatch(firstLine, r'^{(.*)}$'):
-		debug('retrieving comment: ' + firstLine)
+		#debug('retrieving comment: ' + firstLine)
 		comment = regexReplace(firstLine, r'^{(.*)}$', '\\1')
 		preferredKey = comment
 		comment = None
@@ -162,6 +164,7 @@ def main():
 	ap.bindDefaultAction(actionMigrate, help='migrate from guitarDb CRD files to SQLite database')
 	ap.bindParam('input', help='guitarDb CRD main directory')
 	ap.bindParam('output', help='SQLite database output file')
+	ap.bindParam('versionNumber', help='database version number')
 	# do the magic
 	ap.processAll()
 
