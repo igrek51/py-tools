@@ -58,7 +58,6 @@ def validateHomeDir():
         LICHKING_HOME = getScriptRealDir()
         if not LICHKING_HOME.endswith('/'):
             LICHKING_HOME += '/'
-        warn('lichking home set to: %s' % LICHKING_HOME)
 
 def getVoicesDir():
     return LICHKING_HOME + 'voices/'
@@ -236,6 +235,22 @@ def actionVsyncSet(ap):
     else:
         fatal('unknown state: %s' % state)
 
+def actionMemory(ap):
+    memCommand = ap.pollNext('memCommand')
+    if memCommand == 'clear':
+        info('syncing...')
+        shellExec('sync')
+        info('memory (before):')
+        shellExec('free -h')
+        info('clearing PageCache, dentries and inodes (3)...')
+        shellExec('sync; echo 3 | sudo tee /proc/sys/vm/drop_caches')
+        info('cache / buffer memory dropped (after):')
+        shellExec('free -h')
+    elif memCommand == 'watch':
+        shellExec('watch -n 1 cat /proc/meminfo')
+    else:
+        fatal('unknown memCommand: %s' % state)
+
 # Age
 def actionRunAOE2():
     setWorkdir(AOE2_DIR + 'age2_x1/')
@@ -271,10 +286,53 @@ def actionAOETaunt(ap):
             warn('too many taunts found')
         playMp3(tauntsDir + taunts[0])
 
+# Auto complete
+autocompletes = []
+parts = None
+prefix = None
+last = None
+
+def defineAutocompletes(requiredPrefix, requiredLevel, possibleCmds):
+    global autocompletes
+    if prefix.startswith(requiredPrefix) and len(parts) == requiredLevel:
+        filtered = list(filter(lambda c: c.startswith(last), possibleCmds))
+        autocompletes.extend(filtered)
+
+def actionAutocomplete(ap):
+    global autocompletes
+    global parts
+    global prefix
+    global last
+    autocompletes = []
+    compLine = ap.pollRemainingJoined(joiner=' ')
+    if compLine.startswith('"') and compLine.endswith('"'):
+        compLine = compLine[1:-1]
+    parts = compLine.split(' ')
+    prefix = ' '.join(parts[1:])
+    last = parts[-1]
+    # first command help
+    if len(parts) == 2:
+        cmds = ['war', 'go', 'age', 'aoe', 'test', 'screen', 'network', 'audio', 'vsync', 'voice', 'voices', 'info', 'taunt', 'memory', 'help']
+        filtered = list(filter(lambda c: c.startswith(last), cmds))
+        autocompletes.extend(filtered)
+    else:
+        # subcommands
+        defineAutocompletes('test ', 3, ['audio', 'graphics', 'network', 'wine'])
+        defineAutocompletes('screen ', 3, ['list', 'largest']) # TODO screen names
+        defineAutocompletes('network ', 3, ['noipv6'])
+        defineAutocompletes('audio ', 3, ['select-output'])
+        defineAutocompletes('vsync ', 3, ['on', 'off'])
+        defineAutocompletes('voice ', 3, ['list', 'random']) # TODO voice names
+        defineAutocompletes('voices ', 3, []) # TODO voices group names
+        defineAutocompletes('info ', 3, ['warcraftos', 'dota', 'age'])
+        defineAutocompletes('taunt ', 3, ['list']) # TODO taunt numbers
+        defineAutocompletes('memory ', 3, ['clear', 'watch'])
+    print('\n'.join(autocompletes))
+
 # ----- Main
 def main():
     validateHomeDir()
-    ap = ArgsProcessor('LichKing - WarcraftOS tool', VERSION)
+    ap = ArgsProcessor('LichKing tool', VERSION)
     ap.bindCommand(actionRunWar3, ['war', 'go'], help='run Warcraft3 using wine')
     ap.bindCommand(actionRunAOE2, ['age', 'aoe'], help='run AOE2 using wine')
     ap.bindCommand(actionTest, 'test', suffix='audio', help='perform continuous audio test')
@@ -296,6 +354,9 @@ def main():
     ap.bindCommand(actionTips, 'info', suffix='age', help='open AOE2 Taunts cheatsheet')
     ap.bindCommand(actionAOETaunt, 'taunt', suffix='[list]', help='list available AOE2 Taunts')
     ap.bindCommand(actionAOETaunt, 'taunt', suffix='<tauntNumber>', help='play AOE2 Taunt')
+    ap.bindCommand(actionMemory, 'memory', suffix='clear', help='clear cache / buffer RAM memory')
+    ap.bindCommand(actionMemory, 'memory', suffix='watch', help='watch memory cache / buffers / sections size')
+    ap.bindCommand(actionAutocomplete, 'autocomplete', suffix='<autcompleteLine>', help='get autocompletion commands list')
     ap.bindCommand(printHelp, 'help', help='display this help and exit')
     ap.processAll() # do the magic
 

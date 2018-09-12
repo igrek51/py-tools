@@ -1,3 +1,5 @@
+# put it to /etc/bash_completion.d/autocomplete_liching.sh
+
 _lichking() {
     # COMPREPLY=()
     # lich test duPa 51
@@ -11,7 +13,7 @@ _lichking() {
     # echo "COMP_TYPE : ${COMP_TYPE}" # 9
     # echo "args : $@" # lich du test
     # echo "reply : ${COMPREPLY}" #
-    COMPREPLY=( $(./autocomplete_lichking.py --compLine "${COMP_LINE}") )
+    COMPREPLY=( $(lichking autocomplete "${COMP_LINE}") )
 }
 
 complete -F _lichking lichking lich king dupa

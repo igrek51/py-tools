@@ -25,7 +25,7 @@ def actionAutocomplete(ap):
     global prefix
     global last
     autocompletes = []
-    compLine = ap.getParam('compLine')
+    compLine = ap.getParam('autocomplete')
     if compLine.startswith('"') and compLine.endswith('"'):
         compLine = compLine[1:-1]
     parts = compLine.split(' ')
@@ -53,7 +53,7 @@ def actionAutocomplete(ap):
 def main():
     ap = glue.ArgsProcessor('LichKing autocomplete', VERSION).clear()
     ap.bindDefaultAction(actionAutocomplete)
-    ap.bindParam('compLine')
+    ap.bindParam('autocomplete')
     ap.processAll() # do the magic
 
 if __name__ == '__main__': # for testing purposes
