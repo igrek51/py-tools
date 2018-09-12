@@ -1,6 +1,6 @@
 """
-glue v1.4.2
-Common Utilities Toolkit compatible with Python 2.7 and 3
+glue v1.5.1
+One script to rule them all. - Common Utilities Toolkit compatible with both Python 2.7 and 3
 
 Author: igrek51
 """
@@ -10,7 +10,7 @@ import re
 import subprocess
 import glob
 import inspect
-import time
+import datetime
 from builtins import bytes
 
 # ----- Pretty output
@@ -61,10 +61,13 @@ def shellExec(cmd):
 def shellExecErrorCode(cmd):
     return subprocess.call(cmd, shell=True)
 
-def shellOutput(cmd):
+def shellOutput(cmd, asBytes=False):
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     output, err = process.communicate()
-    return output.decode('utf-8')
+    if asBytes:
+        return output
+    else:
+        return output.decode('utf-8')
 
 # ----- String Splitting
 def splitLines(inputString):
@@ -146,15 +149,15 @@ def getScriptRealDir():
 def str2time(timeRaw, pattern):
     """pattern: %H:%M:%S, %d.%m.%Y"""
     try:
-        return time.strptime(timeRaw, pattern)
+        return datetime.datetime.strptime(timeRaw, pattern)
     except ValueError as e:
         return None
 
-def time2str(datetime, pattern):
+def time2str(datetim, pattern):
     """pattern: %H:%M:%S, %d.%m.%Y"""
-    if not datetime:
+    if not datetim:
         return None
-    return time.strftime(pattern, datetime)
+    return datetim.strftime(pattern)
 
 # ----- Collections helpers - syntax reminders
 def filterList(condition, lst):
@@ -197,8 +200,11 @@ class CommandArgRule:
         return dispHelp
 
 # ----- CLI arguments parser
+class CliSyntaxError(RuntimeError):
+    pass
+
 class ArgsProcessor:
-    def __init__(self, appName, version):
+    def __init__(self, appName='Command Line Application', version='0.0.1'):
         self._appName = appName
         self._version = version
         self._argsQue = sys.argv[1:] # CLI arguments list
@@ -254,7 +260,7 @@ class ArgsProcessor:
         """return next arg and remove"""
         if not self.hasNext():
             if requiredName:
-                fatal('no %s given' % requiredName)
+                raise CliSyntaxError('no %s given' % requiredName)
             return None
         nextArg = self._argsQue[self._argsOffset]
         del self._argsQue[self._argsOffset]
@@ -281,16 +287,19 @@ class ArgsProcessor:
 
     # Processing args
     def processAll(self):
-        # process the options first
-        self.processOptions()
-        # if left arguments list is empty
-        if not self._argsQue:
-            if self._defaultAction: # run default action
-                self._invokeDefaultAction()
-            else: # help by default
-                self.printHelp()
-        else:
-            self._processCommands()
+        try:
+            # process the options first
+            self.processOptions()
+            # if left arguments list is empty
+            if not self._argsQue:
+                if self._defaultAction: # run default action
+                    self._invokeDefaultAction()
+                else: # help by default
+                    self.printHelp()
+            else:
+                self._processCommands()
+        except CliSyntaxError as e:
+            error('Wrong command line syntax: %s' % str(e))
 
     def _processCommands(self):
         self._argsOffset = 0
@@ -305,7 +314,7 @@ class ArgsProcessor:
             # run default action without removing arg
             self._invokeDefaultAction()
         else:
-            fatal('unknown argument: %s' % nextArg)
+            raise CliSyntaxError('unknown argument: %s' % nextArg)
         # if some args left
         if self.hasNext():
             warn('too many arguments: %s' % self.pollRemainingJoined())
@@ -346,7 +355,9 @@ class ArgsProcessor:
     def setParam(self, name, value):
         self._params[name] = value
 
-    def getParam(self, name):
+    def getParam(self, name, required=False):
+        if required and name not in self._params:
+            raise CliSyntaxError('no required param given: %s' % name)
         return self._params.get(name, None)
 
     def isParam(self, name):

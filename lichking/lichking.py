@@ -5,9 +5,8 @@ from random import randint
 
 WARCRAFT_DIR = '/home/thrall/games/warcraft-3-pl/'
 AOE2_DIR = '/home/thrall/games/aoe2/'
-LICHKING_HOME = '/home/thrall/lichking/'
-OS_VERSION = '/home/thrall/.osversion'
-VERSION = '1.17.8'
+VOICES_DIR = './voices/'
+VERSION = '1.17.10'
 
 def playWav(path):
     shellExec('aplay %s' % path)
@@ -22,16 +21,16 @@ def playMp3Infinitely(path):
         shellExec('pkill mpg123')
 
 def playVoice(voiceName):
-    voicesDir = getVoicesDir()
+    voicesDir = VOICES_DIR
     if not voiceName.endswith('.wav'):
         voiceName = voiceName + '.wav'
-    if not os.path.isfile(voicesDir + voiceName):
+    if not os.path.isfile(VOICES_DIR + voiceName):
         error('no voice file named %s' % voiceName)
     else:
         playWav(voicesDir + voiceName)
 
 def listVoices(subdir=''):
-    voicesDir = getVoicesDir() + subdir
+    voicesDir = VOICES_DIR + subdir
     voices = listDir(voicesDir)
     voices = filter(lambda file: os.path.isfile(voicesDir + file), voices)
     voices = filter(lambda file: file.endswith('.wav'), voices)
@@ -51,16 +50,6 @@ def playRandomVoice(subdir=''):
     randomVoice = randomItem(voices)
     info('Playing voice %s...' % randomVoice)
     playVoice(randomVoice)
-
-def validateHomeDir():
-    global LICHKING_HOME
-    if not os.path.isdir(LICHKING_HOME) and LICHKING_HOME:
-        LICHKING_HOME = getScriptRealDir()
-        if not LICHKING_HOME.endswith('/'):
-            LICHKING_HOME += '/'
-
-def getVoicesDir():
-    return LICHKING_HOME + 'voices/'
 
 def testSound():
     info('testing audio...')
@@ -96,7 +85,6 @@ def testWine():
     debug('error code: %d' % errorCode)
 
 def showWarcraftosInfo():
-    info('Welcome to the WarcraftOS v%s created by Igrek' % readFile(OS_VERSION).strip())
     info('thrall user has no password.')
     info('root user password is: war')
     info('When launching WC3 game, you have custom keys shortcuts (QWER) already enabled.')
@@ -137,7 +125,7 @@ def selectAudioOutputDevice():
     info('select proper output device by disabling profiles in "Configuration" tab')
     shellExec('pavucontrol &')
     debug('playing test audio indefinitely...')
-    playMp3Infinitely(LICHKING_HOME + 'data/illidan-jestem-slepy-a-nie-gluchy.mp3')
+    playMp3Infinitely('./data/illidan-jestem-slepy-a-nie-gluchy.mp3')
 
 # ----- Actions
 def actionRunWar3():
@@ -181,7 +169,7 @@ def actionTips(ap):
     elif tipsName == 'age':
         shellExec('sublime %sTaunt/cheatsheet.md' % AOE2_DIR)
     else:
-        fatal('unknown tipsName: %s' % tipsName)
+        raise CliSyntaxError('unknown tipsName: %s' % tipsName)
 
 def actionTest(ap):
     testName = ap.pollNext('testName')
@@ -194,21 +182,21 @@ def actionTest(ap):
     elif testName == 'wine':
         testWine()
     else:
-        fatal('unknown testName: %s' % testName)
+        raise CliSyntaxError('unknown testName: %s' % testName)
 
 def actionConfigNetwork(ap):
     comamndName = ap.pollNext('comamndName')
     if comamndName == 'noipv6':
         disableIPv6()
     else:
-        fatal('unknown comamndName: %s' % comamndName)
+        raise CliSyntaxError('unknown comamndName: %s' % comamndName)
 
 def actionConfigAudio(ap):
     comamndName = ap.pollNext('comamndName')
     if comamndName == 'select-output':
         selectAudioOutputDevice()
     else:
-        fatal('unknown comamndName: %s' % comamndName)
+        raise CliSyntaxError('unknown comamndName: %s' % comamndName)
 
 def actionScreen(ap):
     screenName = ap.pollNext()
@@ -233,7 +221,7 @@ def actionVsyncSet(ap):
         shellExec('export vblank_mode=0')
         info('please execute in parent shell process: export vblank_mode=0')
     else:
-        fatal('unknown state: %s' % state)
+        raise CliSyntaxError('unknown state: %s' % state)
 
 def actionMemory(ap):
     memCommand = ap.pollNext('memCommand')
@@ -249,20 +237,20 @@ def actionMemory(ap):
     elif memCommand == 'watch':
         shellExec('watch -n 1 cat /proc/meminfo')
     else:
-        fatal('unknown memCommand: %s' % state)
+        raise CliSyntaxError('unknown memCommand: %s' % state)
 
 # Age
 def actionRunAOE2():
     setWorkdir(AOE2_DIR + 'age2_x1/')
     aoeStachuVersion = readFile(AOE2_DIR + 'stachu-version.txt')
     info('Running Age of Empires 2 - StachuJones-%s...' % aoeStachuVersion)
-    playWav(LICHKING_HOME + 'data/stachu-2.wav')
+    playWav('./data/stachu-2.wav')
     # run wine
     shellExec('LANG=pl_PL.UTF-8') # LANG settings
     shellExec('export WINEARCH=win32') # 32 bit wine
     errorCode = shellExecErrorCode('wine age2_x2.exe -opengl')
     debug('wine error code: %d' % errorCode)
-    playWav(LICHKING_HOME + 'data/stachu-8.wav')
+    playWav('./data/stachu-8.wav')
 
 def actionAOETaunt(ap):
     tauntNumber = ap.pollNext()
@@ -331,7 +319,7 @@ def actionAutocomplete(ap):
 
 # ----- Main
 def main():
-    validateHomeDir()
+    setWorkdir(getScriptRealDir())
     ap = ArgsProcessor('LichKing tool', VERSION)
     ap.bindCommand(actionRunWar3, ['war', 'go'], help='run Warcraft3 using wine')
     ap.bindCommand(actionRunAOE2, ['age', 'aoe'], help='run AOE2 using wine')
