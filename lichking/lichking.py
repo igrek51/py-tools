@@ -70,8 +70,8 @@ def test_sound():
 def test_network():
     info('Useful Linux commands: ifconfig, ping, nmap, ip')
     info('available network interfaces (up):')
-    ifconfig = shell('sudo ifconfig')
-    lines = split_lines(ifconfig)
+    ifconfig = shell_output('sudo ifconfig')
+    lines = nonempty_lines(ifconfig)
     lines = regex_filter_list(lines, r'^([a-z0-9]+).*')
     lines = regex_replace_list(lines, r'^([a-z0-9]+).*', '\\1')
     if not lines:
@@ -107,7 +107,7 @@ def network_disable_ipv6():
 def list_screens():
     # list outputs
     xrandr = shell_output('xrandr 2>/dev/null')
-    lines = split_lines(xrandr)
+    lines = nonempty_lines(xrandr)
     lines = regex_filter_list(lines, r'^([a-zA-Z0-9\-]+) connected')
     lines = regex_replace_list(lines, r'^([a-zA-Z0-9\-]+) connected[a-z ]*([0-9]+)x([0-9]+).*', '\\1\t\\2\t\\3')
     if not lines:
@@ -167,6 +167,10 @@ def action_play_voice(ap):
     else:
         # list available voices - default
         action_list_voices(ap)
+
+
+def completer_voices_list():
+    return list_voices()
 
 
 def action_play_voices_group(ap):
@@ -256,8 +260,15 @@ def action_run_aoe2():
 
 def action_aoe_taunt_list(ap):
     info('Available taunts:')
-    taunts_cheatsheet = read_file(AOE2_DIR + 'Taunt/cheatsheet.md')
+    taunt_list_file = AOE2_DIR + 'Taunt/cheatsheet.md'
+    if not file_exists(taunt_list_file):
+        taunt_list_file = './data/aoe-cheatsheet.md'
+    taunts_cheatsheet = read_file(taunt_list_file)
     print(taunts_cheatsheet)
+
+
+def completer_taunts_list():
+    return list(map(lambda num: str(num), range(1, 43)))
 
 
 def action_aoe_taunt(ap):
@@ -311,17 +322,18 @@ def main():
                       help='enable / disable VSync')
 
     ap_voice = ap.add_subcommand('voice', action=action_play_voice, syntax='[<voiceName>]',
-                                 help='play selected voice sound')
+                                 help='play selected voice sound', choices=completer_voices_list)
     ap_voice.add_subcommand('list', action=action_list_voices, help='list available voices')
-    ap_voice.add_subcommand('random', action=action_play_random_voice, syntax='random', help='play random voice sound')
+    ap_voice.add_subcommand('random', action=action_play_random_voice, help='play random voice sound')
     ap_voice.add_subcommand('group', action=action_play_voices_group, syntax='<group>',
-                            help='play random voice from a group')
+                            help='play random voice from a group', choices=['startup', 'war-close', 'war-launch'])
 
     ap_info = ap.add_subcommand('info')
     ap_info.add_subcommand('dota', action=action_tips_dota, help='open Dota cheatsheet')
     ap_info.add_subcommand('age', action=action_tips_age, help='open AOE2 Taunts cheatsheet')
 
-    ap_taunt = ap.add_subcommand('taunt', action=action_aoe_taunt, syntax='[<tauntNumber>]', help='play AOE2 Taunt')
+    ap_taunt = ap.add_subcommand('taunt', action=action_aoe_taunt, syntax='[<tauntNumber>]', help='play AOE2 Taunt',
+                                 choices=completer_taunts_list)
     ap_taunt.add_subcommand('list', action=action_aoe_taunt_list, help='list available AOE2 Taunts')
 
     ap_memory = ap.add_subcommand('memory')
@@ -329,6 +341,7 @@ def main():
     ap_memory.add_subcommand('watch', action=action_memory_watch, help='watch memory cache / buffers / sections size')
 
     ap.add_subcommand('help', action=print_help, help='display this help and exit')
+
     ap.process()  # do the magic
 
 
