@@ -87,11 +87,11 @@ def addCategories(c, inputDir):
 		addCategory(c, inputDir, category)
 
 def addCategory(c, inputDir, categoryName0):
-	typeId = 1
+	typeId = 3
 	categoryName = categoryName0
 	categoryName = categoryName.replace('-', '/') # AC-DC
 	if categoryName == '0thers':
-		typeId = 3
+		typeId = 2
 		categoryName = None
 	# inserting record
 	c.execute('SELECT MAX(id) AS id FROM categories')

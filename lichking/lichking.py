@@ -6,7 +6,7 @@ from random import randint
 WARCRAFT_DIR = '/home/thrall/games/warcraft-3-pl/'
 AOE2_DIR = '/home/thrall/games/aoe2/'
 VOICES_DIR = './voices/'
-VERSION = '1.18.1'
+VERSION = '1.18.2'
 
 
 def play_wav(path):
@@ -193,7 +193,7 @@ def action_tips_dota(ap):
 
 
 def action_tips_age(ap):
-    shell('sublime %sTaunt/cheatsheet.md' % AOE2_DIR)
+    shell('sublime %sTaunt/cheatsheet.md' % get_aoe2_dir())
 
 
 def action_set_screen_primary(ap):
@@ -245,9 +245,15 @@ def action_memory_watch(ap):
 
 
 # Age
+def get_aoe2_dir():
+	if os.path.isdir(AOE2_DIR):
+		return AOE2_DIR
+	else:
+		return './'
+
 def action_run_aoe2():
-    set_workdir(AOE2_DIR + 'age2_x1/')
-    aoe_stachu_version = read_file(AOE2_DIR + 'stachu-version.txt')
+    set_workdir(get_aoe2_dir() + 'age2_x1/')
+    aoe_stachu_version = read_file(get_aoe2_dir() + 'stachu-version.txt')
     info('Running Age of Empires 2 - StachuJones-%s...' % aoe_stachu_version)
     play_wav('./data/stachu-2.wav')
     # run wine
@@ -260,9 +266,7 @@ def action_run_aoe2():
 
 def action_aoe_taunt_list(ap):
     info('Available taunts:')
-    taunt_list_file = AOE2_DIR + 'Taunt/cheatsheet.md'
-    if not file_exists(taunt_list_file):
-        taunt_list_file = './data/aoe-cheatsheet.md'
+    taunt_list_file = get_aoe2_dir() + 'Taunt/cheatsheet.md'
     taunts_cheatsheet = read_file(taunt_list_file)
     print(taunts_cheatsheet)
 
@@ -279,7 +283,7 @@ def action_aoe_taunt(ap):
         if len(taunt_number) == 1:
             taunt_number = '0' + taunt_number
         # find taunt by number
-        taunts_dir = AOE2_DIR + 'Taunt/'
+        taunts_dir = get_aoe2_dir() + 'Taunt/'
         taunts = list_dir(taunts_dir)
         taunts = filter_list(lambda file: os.path.isfile(taunts_dir + file), taunts)
         taunts = filter_list(lambda file: file.startswith(taunt_number), taunts)
