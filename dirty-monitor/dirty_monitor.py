@@ -4,6 +4,7 @@ from __future__ import division
 from glue import *
 import time
 import threading
+import select
 
 
 def get_mem_dirty_writeback():
@@ -56,6 +57,12 @@ def kb_to_human(kbs):
 def kb_to_human_just(kbs):
     return kb_to_human(kbs).rjust(10)
 
+def kb_to_speed_human_just(kbs):
+    kb_human = kb_to_human(kbs) + '/s'
+    if kbs > 0:
+        kb_human = '+' + kb_human
+    return kb_human.rjust(10)
+
 def calc_avg_speed(mem_sizes_buffer):
     if len(mem_sizes_buffer) < 2:
         return 0
@@ -92,6 +99,13 @@ CHAR_BLUE = '\033[34m'
 CHAR_YELLOW = '\033[33m'
 CHAR_RED = '\033[31m'
 
+def input_or_timeout(timeout):
+    i, o, e = select.select( [sys.stdin], [], [], timeout)
+    if (i):
+        return sys.stdin.readline().strip()
+    else:
+        return None
+
 # ----- Actions -----
 def action_monitor_meminfo(ap):
 
@@ -104,7 +118,7 @@ def action_monitor_meminfo(ap):
     try:
         while True:
             # rerun sync
-            if ap.is_flag_set('sync') and not background_thread.is_alive():
+            if ap.is_flag_set('sync') and background_thread and not background_thread.is_alive():
                 info('running sync in background...')
                 background_thread.stop()
                 background_thread = run_sync_background()
@@ -124,8 +138,8 @@ def action_monitor_meminfo(ap):
             # output values
             print_timestamp = CHAR_BOLD + current_time() + CHAR_RESET
             print_remaining = CHAR_BOLD + kb_to_human_just(remaining_kb) + CHAR_RESET
-            print_temporary_speed = CHAR_BOLD + kb_to_human_just(speed_temp) + '/s' + CHAR_RESET
-            print_avg_speed = CHAR_BOLD + kb_to_human_just(speed_avg) + '/s' + CHAR_RESET
+            print_temporary_speed = CHAR_BOLD + kb_to_speed_human_just(speed_temp) + CHAR_RESET
+            print_avg_speed = CHAR_BOLD + kb_to_speed_human_just(speed_avg) + CHAR_RESET
             print_eta = CHAR_BOLD + seconds_to_human(eta_s).rjust(12) + CHAR_RESET
 
             # output formatting
@@ -154,7 +168,14 @@ def action_monitor_meminfo(ap):
             print('[%s] Remaining: %s, Speed: %s, AVG speed: %s, ETA: %s' % (print_timestamp, print_remaining, print_temporary_speed, print_avg_speed, print_eta))
 
             # delay before next loop
-            time.sleep(1)
+            inp = input_or_timeout(1)
+            # sync command
+            if inp == 's':
+                if not background_thread or not background_thread.is_alive():
+                    info('running sync in background...')
+                    background_thread = run_sync_background()
+
+            #time.sleep(1)
     except KeyboardInterrupt:
         # Ctrl + C handling without printing stack trace
         print  # new line
