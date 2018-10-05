@@ -49,19 +49,23 @@ def kb_to_human(kbs):
         return '%d kB' % kbs
     mbs = kbs / 1024.0
     if mbs < 1024:
-        return '%.1f MB' % mbs
+        return '%.2f MB' % mbs
     gbs = mbs / 1024.0
-    return '%.1f GB' % gbs
+    return '%.2f GB' % gbs
 
 def kb_to_human_just(kbs):
-    return kb_to_human(kbs).rjust(9)
+    return kb_to_human(kbs).rjust(10)
 
-def calc_speed(mem_sizes_buffer):
+def calc_avg_speed(mem_sizes_buffer):
     if len(mem_sizes_buffer) < 2:
         return 0
-
     diff = mem_sizes_buffer[-1][2] - mem_sizes_buffer[0][2]
     return diff / (len(mem_sizes_buffer) - 1)
+
+def calc_temporary_speed(mem_sizes_buffer):
+    if len(mem_sizes_buffer) < 2:
+        return 0
+    return mem_sizes_buffer[-1][2] - mem_sizes_buffer[-2][2]
 
 def calc_eta(remaining_kb, speed):
     if speed >= 0:
@@ -76,6 +80,17 @@ def seconds_to_human(seconds):
     if minutes > 0:
         strout = '%d min %s' % (minutes, strout)
     return strout
+
+def current_time():
+    now = datetime.datetime.now()
+    return time2str(now, '%H:%M:%S')
+
+CHAR_BOLD = '\033[1m'
+CHAR_RESET = '\033[0m'
+CHAR_GREEN = '\033[32m'
+CHAR_BLUE = '\033[34m'
+CHAR_YELLOW = '\033[33m'
+CHAR_RED = '\033[31m'
 
 # ----- Actions -----
 def action_monitor_meminfo(ap):
@@ -102,12 +117,41 @@ def action_monitor_meminfo(ap):
             if len(mem_sizes_buffer) > 10:
                 mem_sizes_buffer.pop(0)
 
-            speed = calc_speed(mem_sizes_buffer)
-            speed_human = kb_to_human_just(speed)
-            eta_s = calc_eta(remaining_kb, speed)
-            eta_human = seconds_to_human(eta_s).rjust(12)
+            speed_temp = calc_temporary_speed(mem_sizes_buffer)
+            speed_avg = calc_avg_speed(mem_sizes_buffer)
+            eta_s = calc_eta(remaining_kb, speed_avg)
 
-            print('Dirty: %s, Writeback: %s, Remaining: %s, Speed: %s / s, ETA: %s' % (kb_to_human_just(dirty_kb), kb_to_human_just(writeback_kb), kb_to_human_just(remaining_kb), speed_human, eta_human))
+            # output values
+            print_timestamp = CHAR_BOLD + current_time() + CHAR_RESET
+            print_remaining = CHAR_BOLD + kb_to_human_just(remaining_kb) + CHAR_RESET
+            print_temporary_speed = CHAR_BOLD + kb_to_human_just(speed_temp) + '/s' + CHAR_RESET
+            print_avg_speed = CHAR_BOLD + kb_to_human_just(speed_avg) + '/s' + CHAR_RESET
+            print_eta = CHAR_BOLD + seconds_to_human(eta_s).rjust(12) + CHAR_RESET
+
+            # output formatting
+            if remaining_kb < 100:
+                print_remaining = CHAR_GREEN + print_remaining
+
+            if speed_temp > 0:
+                print_temporary_speed = CHAR_RED + print_temporary_speed
+            elif speed_temp == 0:
+                print_temporary_speed = CHAR_YELLOW + print_temporary_speed
+            else:
+                print_temporary_speed = CHAR_GREEN + print_temporary_speed
+
+            if speed_avg > 0:
+                print_avg_speed = CHAR_RED + print_avg_speed
+            elif speed_avg == 0:
+                print_avg_speed = CHAR_YELLOW + print_avg_speed
+            else:
+                print_avg_speed = CHAR_GREEN + print_avg_speed
+
+            if not eta_s:
+                print_eta = CHAR_YELLOW + print_eta
+            elif eta_s < 60:
+                print_eta = CHAR_GREEN + print_eta
+
+            print('[%s] Remaining: %s, Speed: %s, AVG speed: %s, ETA: %s' % (print_timestamp, print_remaining, print_temporary_speed, print_avg_speed, print_eta))
 
             # delay before next loop
             time.sleep(1)
