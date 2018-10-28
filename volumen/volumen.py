@@ -82,12 +82,14 @@ def nextArg(args):
 	return args[0]
 
 
-
 def updateVolume(volumeDirection, volumeStep):
+	sinkNumber = getPulseaudioSinkNumber()
 	if (volumeDirection == 1):
-		shellExec('amixer -q sset Master %d%%+' % volumeStep)
+		#shellExec('amixer -q sset Master %d%%+' % volumeStep)
+		shellExec('pactl set-sink-volume %d +%d%%' % (sinkNumber, volumeStep))
 	elif (volumeDirection == -1):
-		shellExec('amixer -q sset Master %d%%-' % volumeStep)
+		#shellExec('amixer -q sset Master %d%%-' % volumeStep)
+		shellExec('pactl set-sink-volume %d -%d%%' % (sinkNumber, volumeStep))
 
 def showCurrentVolume():
 	masterVolume = readMasterVolume()
@@ -97,6 +99,26 @@ def showCurrentVolume():
 	showNotification(iconName, summary, body)
 
 def readMasterVolume():
+	return readPulseaudioVolume()
+
+def getPulseaudioSinkNumber():
+	masterVolumeRegex = r'^(\d+)(.*)$'
+	for line in shellGetOutput('pactl list sinks short').split('\n'):
+		match = re.match(masterVolumeRegex, line)
+		if match:
+			return int(match.group(1))
+	return None
+
+def readPulseaudioVolume():
+	masterVolumeRegex = r'^(.*)Volume: front-left: \d+ / +(\d+)% / (.*)$'
+	for line in shellGetOutput('pactl list sinks').split('\n'):
+		match = re.match(masterVolumeRegex, line)
+		if match:
+			return int(match.group(2))
+	warn('Master volume could not have been read')
+	return None
+
+def readAlsaVolume():
 	masterVolumeRegex = r'^(.*)Front (Right|Left): Playback (\d*) \[(\d+)%\] \[on\]$'
 	for line in shellGetOutput('amixer get Master').split('\n'):
 		match = re.match(masterVolumeRegex, line)
