@@ -5,6 +5,7 @@ from glue import *
 import time
 import threading
 import select
+import signal
 
 
 def get_mem_dirty_writeback():
@@ -61,7 +62,7 @@ def kb_to_speed_human_just(kbs):
     kb_human = kb_to_human(kbs) + '/s'
     if kbs > 0:
         kb_human = '+' + kb_human
-    return kb_human.rjust(10)
+    return kb_human.rjust(13)
 
 def calc_avg_speed(mem_sizes_buffer):
     if len(mem_sizes_buffer) < 2:
@@ -164,6 +165,8 @@ def action_monitor_meminfo(ap):
                 print_eta = CHAR_YELLOW + print_eta
             elif eta_s < 60:
                 print_eta = CHAR_GREEN + print_eta
+            elif eta_s > 600:
+                print_eta = CHAR_RED + print_eta
 
             print('[%s] Remaining: %s, Speed: %s, AVG speed: %s, ETA: %s' % (print_timestamp, print_remaining, print_temporary_speed, print_avg_speed, print_eta))
 
@@ -171,7 +174,9 @@ def action_monitor_meminfo(ap):
             inp = input_or_timeout(1)
             # sync command
             if inp == 's':
-                if not background_thread or not background_thread.is_alive():
+            	if background_thread and background_thread.is_alive():
+            		info('already syncing.')
+            	else:
                     info('running sync in background...')
                     background_thread = run_sync_background()
 
