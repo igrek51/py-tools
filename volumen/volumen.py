@@ -85,11 +85,11 @@ def nextArg(args):
 def updateVolume(volumeDirection, volumeStep):
 	sinkNumber = getPulseaudioSinkNumber()
 	if (volumeDirection == 1):
-		#shellExec('amixer -q sset Master %d%%+' % volumeStep)
-		shellExec('pactl set-sink-volume %d +%d%%' % (sinkNumber, volumeStep))
+		shellExec('amixer -q sset Master %d%%+' % volumeStep)
+		#shellExec('pactl set-sink-volume %d +%d%%' % (sinkNumber, volumeStep))
 	elif (volumeDirection == -1):
-		#shellExec('amixer -q sset Master %d%%-' % volumeStep)
-		shellExec('pactl set-sink-volume %d -%d%%' % (sinkNumber, volumeStep))
+		shellExec('amixer -q sset Master %d%%-' % volumeStep)
+		#shellExec('pactl set-sink-volume %d -%d%%' % (sinkNumber, volumeStep))
 
 def showCurrentVolume():
 	masterVolume = readMasterVolume()
