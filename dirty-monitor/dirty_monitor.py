@@ -17,7 +17,7 @@ def get_mem_dirty_writeback():
     return (int(dirty[0]), int(writeback[0]))
 
 def run_sync_background():
-    background_thread = BackgroundExecuteThread('sync')
+    background_thread = BackgroundExecuteThread('nohup sync > /dev/null 2>&1 &')
     background_thread.start()
     return background_thread
 
@@ -29,7 +29,6 @@ class BackgroundExecuteThread(threading.Thread):
         self.__proc = None
 
     def run(self):
-        # output to console
         self.__proc = subprocess.Popen(self.__cmd, stdout=None, shell=True, preexec_fn=os.setsid)
         if self.__proc is not None:
             self.__proc.wait()
@@ -64,16 +63,23 @@ def kb_to_speed_human_just(kbs):
         kb_human = '+' + kb_human
     return kb_human.rjust(13)
 
-def calc_avg_speed(mem_sizes_buffer):
-    if len(mem_sizes_buffer) < 2:
+def calc_avg_speed(mem_infos):
+    if len(mem_infos) < 2:
         return 0
-    diff = mem_sizes_buffer[-1][2] - mem_sizes_buffer[0][2]
-    return diff / (len(mem_sizes_buffer) - 1)
+    first = mem_infos[0]
+    last = mem_infos[-1]
+    remaining_delta = last.remaining_kb - first.remaining_kb
+    time_delta = last.timestamp - first.timestamp
+    return remaining_delta / time_delta
 
-def calc_temporary_speed(mem_sizes_buffer):
-    if len(mem_sizes_buffer) < 2:
+def calc_temporary_speed(mem_infos):
+    if len(mem_infos) < 2:
         return 0
-    return mem_sizes_buffer[-1][2] - mem_sizes_buffer[-2][2]
+    last = mem_infos[-1]
+    prelast = mem_infos[-2]
+    remaining_delta = last.remaining_kb - prelast.remaining_kb
+    time_delta = last.timestamp - prelast.timestamp
+    return remaining_delta / time_delta
 
 def calc_eta(remaining_kb, speed):
     if speed >= 0:
@@ -86,7 +92,7 @@ def seconds_to_human(seconds):
     strout = '%d s' % (int(seconds) % 60)
     minutes = int(seconds) // 60
     if minutes > 0:
-        strout = '%d min %s' % (minutes, strout)
+        strout = '%d m %s' % (minutes, strout)
     return strout
 
 def current_time():
@@ -101,15 +107,26 @@ CHAR_YELLOW = '\033[33m'
 CHAR_RED = '\033[31m'
 
 def input_or_timeout(timeout):
-    i, o, e = select.select( [sys.stdin], [], [], timeout)
+    i, o, e = select.select([sys.stdin], [], [], timeout)
     if (i):
         return sys.stdin.readline().strip()
     else:
         return None
 
+
+class MemInfoEntry(object):
+    """timestamp [s], dirty [kB], writeback [kB], remaining = sum [kB]"""
+    def __init__(self, timestamp, dirty_kb, writeback_kb):
+        self.timestamp = timestamp
+        self.dirty_kb = dirty_kb
+        self.writeback_kb = writeback_kb
+
+    @property
+    def remaining_kb(self):
+        return self.dirty_kb + self.writeback_kb
+
 # ----- Actions -----
 def action_monitor_meminfo(ap):
-
     background_thread = None
     if ap.is_flag_set('sync'):
         background_thread = run_sync_background()
@@ -124,10 +141,11 @@ def action_monitor_meminfo(ap):
                 background_thread.stop()
                 background_thread = run_sync_background()
 
+            timestamp = time.time()
             dirty_kb, writeback_kb = get_mem_dirty_writeback()
             remaining_kb = dirty_kb + writeback_kb
             
-            mem_sizes_buffer.append((dirty_kb, writeback_kb, remaining_kb))
+            mem_sizes_buffer.append(MemInfoEntry(timestamp, dirty_kb, writeback_kb))
             # max buffer size
             if len(mem_sizes_buffer) > 10:
                 mem_sizes_buffer.pop(0)
@@ -141,7 +159,7 @@ def action_monitor_meminfo(ap):
             print_remaining = CHAR_BOLD + kb_to_human_just(remaining_kb) + CHAR_RESET
             print_temporary_speed = CHAR_BOLD + kb_to_speed_human_just(speed_temp) + CHAR_RESET
             print_avg_speed = CHAR_BOLD + kb_to_speed_human_just(speed_avg) + CHAR_RESET
-            print_eta = CHAR_BOLD + seconds_to_human(eta_s).rjust(12) + CHAR_RESET
+            print_eta = CHAR_BOLD + seconds_to_human(eta_s).rjust(10) + CHAR_RESET
 
             # output formatting
             if remaining_kb < 100:
@@ -174,9 +192,9 @@ def action_monitor_meminfo(ap):
             inp = input_or_timeout(1)
             # sync command
             if inp == 's':
-            	if background_thread and background_thread.is_alive():
-            		info('already syncing.')
-            	else:
+                if background_thread and background_thread.is_alive():
+                    info('already syncing.')
+                else:
                     info('running sync in background...')
                     background_thread = run_sync_background()
 
@@ -195,7 +213,8 @@ def action_monitor_meminfo(ap):
 
 # ----- CLI definitions -----
 def main():
-    ap = ArgsProcessor(app_name='Dirty-Writeback memory stream monitor', version='1.0.1', default_action=action_monitor_meminfo)
+    ap = ArgsProcessor(app_name='Dirty-Writeback memory stream monitor', version='1.1.0', default_action=action_monitor_meminfo,
+        description='Type [s], [Enter] to force sync when monitoring memory')
     ap.add_flag('sync', help='run sync continuously')
     ap.process()
 
