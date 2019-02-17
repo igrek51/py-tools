@@ -5,8 +5,9 @@ from random import randint
 
 WARCRAFT_DIR = '/home/thrall/games/warcraft-3-pl/'
 AOE2_DIR = '/home/thrall/games/aoe2/'
+HOMM3_DIR = '/mnt/games/games/heroes3-hota/'
 VOICES_DIR = './voices/'
-VERSION = '1.18.2'
+VERSION = '1.18.3'
 
 
 def play_wav(path):
@@ -147,7 +148,7 @@ def action_run_war3():
     # taunt on startup
     play_random_voice()
     # RUN WINE
-    shell('LANG=pl_PL.UTF-8')  # LANG settings
+    shell('export LANG=pl_PL.UTF-8')  # LANG settings
     # 32 bit wine
     shell('export WINEARCH=win32')
     # shell('export WINEPREFIX=/home/thrall/.wine32')
@@ -257,7 +258,7 @@ def action_run_aoe2():
     info('Running Age of Empires 2 - StachuJones-%s...' % aoe_stachu_version)
     play_wav('./data/stachu-2.wav')
     # run wine
-    shell('LANG=pl_PL.UTF-8')  # LANG settings
+    shell('export LANG=pl_PL.UTF-8')  # LANG settings
     shell('export WINEARCH=win32')  # 32 bit wine
     error_code = shell_error_code('wine age2_x2.exe -opengl')
     debug('wine error code: %d' % error_code)
@@ -297,6 +298,21 @@ def action_aoe_taunt(ap):
         action_aoe_taunt_list(ap)
 
 
+# HOMM3
+def get_homm3_dir():
+    if os.path.isdir(HOMM3_DIR):
+        return HOMM3_DIR
+    else:
+        return './'
+
+
+def action_run_homm3():
+    set_workdir(get_homm3_dir())
+    info('Running Heroes of Might & Magic 3...')
+    error_code = shell_error_code('LANG=pl_PL.UTF-8 wine HD_Launcher.exe')
+    debug('wine error code: %d' % error_code)
+
+
 # ----- Args definitions -----
 def main():
     set_workdir(script_real_dir())
@@ -304,6 +320,7 @@ def main():
     ap = ArgsProcessor(app_name='LichKing tool', version=VERSION)
     ap.add_subcommand(['war', 'go'], action=action_run_war3, help='run Warcraft3 using wine')
     ap.add_subcommand(['age', 'aoe'], action=action_run_aoe2, help='run AOE2 using wine')
+    ap.add_subcommand(['heroes', 'homm3'], action=action_run_homm3, help='run HOMM3 using wine')
 
     ap_test = ap.add_subcommand('test')
     ap_test.add_subcommand('audio', action=test_sound, help='perform continuous audio test')
