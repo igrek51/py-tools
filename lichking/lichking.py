@@ -3,11 +3,10 @@
 from glue import *
 from random import randint
 
-WARCRAFT_DIR = '/home/thrall/games/warcraft-3-pl/'
-AOE2_DIR = '/home/thrall/games/aoe2/'
-HOMM3_DIR = '/mnt/games/games/heroes3-hota/'
-VOICES_DIR = './voices/'
-VERSION = '1.18.3'
+WARCRAFT_DIR = '/mnt/data/ext/live-games/warcraft-3-pl/'
+AOE2_DIR = '/mnt/data/ext/live-games/aoe2/'
+HOMM3_DIR = '/mnt/data/ext/live-games/heroes3-hota/'
+VERSION = '1.18.5'
 
 
 def play_wav(path):
@@ -28,14 +27,15 @@ def play_mp3_infinitely(path):
 def play_voice(voice_name):
     if not voice_name.endswith('.wav'):
         voice_name = voice_name + '.wav'
-    if not os.path.isfile(VOICES_DIR + voice_name):
+    voice_path = os.path.join(script_real_dir(), 'voices/', voice_name)
+    if not os.path.isfile(voice_path):
         error('no voice file named %s' % voice_name)
     else:
-        play_wav(VOICES_DIR + voice_name)
+        play_wav(voice_path)
 
 
 def list_voices(subdir=''):
-    voices_dir = VOICES_DIR + subdir
+    voices_dir = os.path.join(script_real_dir(), 'voices/', subdir)
     voices = list_dir(voices_dir)
     voices = filter(lambda file: os.path.isfile(voices_dir + file), voices)
     voices = filter(lambda file: file.endswith('.wav'), voices)
@@ -139,7 +139,8 @@ def select_audio_output_device():
     info('select proper output device by disabling profiles in "Configuration" tab')
     shell('pavucontrol &')
     debug('playing test audio indefinitely...')
-    play_mp3_infinitely('./data/illidan-jestem-slepy-a-nie-gluchy.mp3')
+    sample_path = os.path.join(script_real_dir(), 'data/illidan-jestem-slepy-a-nie-gluchy.mp3')
+    play_mp3_infinitely(sample_path)
 
 
 # ----- Actions -----
@@ -147,15 +148,7 @@ def action_run_war3():
     set_workdir(WARCRAFT_DIR)
     # taunt on startup
     play_random_voice()
-    # RUN WINE
-    shell('export LANG=pl_PL.UTF-8')  # LANG settings
-    # 32 bit wine
-    shell('export WINEARCH=win32')
-    # shell('export WINEPREFIX=/home/thrall/.wine32')
-    # 64 bit wine
-    # shell('export WINEARCH=win64')
-    # shell('unset WINEPREFIX')
-    error_code = shell_error_code('wine "Warcraft III.exe" -opengl')
+    error_code = shell_error_code('./wine.sh')
     debug('wine error code: %d' % error_code)
     # taunt on shutdown
     play_random_voice('war-close')
@@ -253,16 +246,13 @@ def get_aoe2_dir():
 		return './'
 
 def action_run_aoe2():
+    aoe_stachu_version = read_file(get_aoe2_dir() + 'version.md')
+    info('Running Age of Empires 2 - %s...' % aoe_stachu_version)
+    play_wav(os.path.join(script_real_dir(), 'data/stachu-2.wav'))
     set_workdir(get_aoe2_dir() + 'age2_x1/')
-    aoe_stachu_version = read_file(get_aoe2_dir() + 'stachu-version.txt')
-    info('Running Age of Empires 2 - StachuJones-%s...' % aoe_stachu_version)
-    play_wav('./data/stachu-2.wav')
-    # run wine
-    shell('export LANG=pl_PL.UTF-8')  # LANG settings
-    shell('export WINEARCH=win32')  # 32 bit wine
-    error_code = shell_error_code('wine age2_x2.exe -opengl')
+    error_code = shell_error_code('./wine.sh')
     debug('wine error code: %d' % error_code)
-    play_wav('./data/stachu-8.wav')
+    play_wav(os.path.join(script_real_dir(), 'data/stachu-8.wav'))
 
 
 def action_aoe_taunt_list(ap):
@@ -309,7 +299,7 @@ def get_homm3_dir():
 def action_run_homm3():
     set_workdir(get_homm3_dir())
     info('Running Heroes of Might & Magic 3...')
-    error_code = shell_error_code('LANG=pl_PL.UTF-8 wine HD_Launcher.exe')
+    error_code = shell_error_code('./wine.sh')
     debug('wine error code: %d' % error_code)
 
 
