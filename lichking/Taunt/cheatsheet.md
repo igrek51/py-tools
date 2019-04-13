@@ -12,7 +12,7 @@
 *12* Hahaha hahaha (pan śmieszek)
 *13* Ożesz Ty chuju
 *14* W imię zasad, skurwysynu
-*15* To je amelinium
+*15* A ja mam to w dupie
 *16* Pięknie kurwa, pięknie...
 *17* Aż wos szlag jasny trafi, krew nagła zaleje
 *18* Ha, Gayyy
