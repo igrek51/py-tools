@@ -3,9 +3,9 @@
 from glue import *
 from random import randint
 
-WARCRAFT_DIR = '/mnt/data/ext/live-games/warcraft-3-pl/'
-AOE2_DIR = '/mnt/data/ext/live-games/aoe2/'
-HOMM3_DIR = '/mnt/data/ext/live-games/heroes3-hota/'
+WARCRAFT_DIR = '/mnt/usb-data/modules/warcraft-3-pl/'
+AOE2_DIR = '/mnt/usb-data/modules/aoe2/'
+HOMM3_DIR = '/mnt/usb-data/modules/heroes3-hota/'
 VERSION = '1.18.5'
 
 

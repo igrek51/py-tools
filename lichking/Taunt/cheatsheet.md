@@ -38,5 +38,5 @@
 *38* Napierdolę się jak księciuniu. [_Give me your extra resources_]
 *39* O Kurwa, diabeł!
 *40* O ty, kurwa!
-*41* Bede grau w gre
+*41* No tak było, nie zmyślam
 *42* Co to kurwa jest?! [_What Age Are You In?_]
