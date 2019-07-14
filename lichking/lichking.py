@@ -1,12 +1,21 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from glue import *
+#!/usr/bin/env python3
+import os
+import sys
 from random import randint
+
+from cliglue.utils.shell import shell, shell_output, shell_error_code
+from cliglue.utils.files import script_real_dir, list_dir, set_workdir, read_file
+from cliglue.utils.strings import nonempty_lines, split_to_tuples
+from cliglue.utils.regex import regex_filter_list, regex_replace_list
+
+from cliglue.utils.output import info, fatal, error, debug, warn
+from cliglue.utils.input import input_required
+from cliglue import CliBuilder, argument, arguments, flag, parameter, subcommand
 
 WARCRAFT_DIR = '/mnt/usb-data/modules/warcraft-3-pl/'
 AOE2_DIR = '/mnt/usb-data/modules/aoe2/'
 HOMM3_DIR = '/mnt/usb-data/modules/heroes3-hota/'
-VERSION = '1.18.5'
+VERSION = '1.19.0'
 
 
 def play_wav(path):
@@ -143,7 +152,6 @@ def select_audio_output_device():
     play_mp3_infinitely(sample_path)
 
 
-# ----- Actions -----
 def action_run_war3():
     set_workdir(WARCRAFT_DIR)
     # taunt on startup
@@ -154,52 +162,49 @@ def action_run_war3():
     play_random_voice('war-close')
 
 
-def action_play_voice(ap):
-    voice_name = ap.poll_next()
+def action_play_voice(voice_name):
     if voice_name:
         play_voice(voice_name)
     else:
         # list available voices - default
-        action_list_voices(ap)
+        action_list_voices()
 
 
 def completer_voices_list():
     return list_voices()
 
 
-def action_play_voices_group(ap):
-    group = ap.poll_next('group')
+def action_play_voices_group(group):
     play_random_voice(group)
 
 
-def action_play_random_voice(ap):
+def action_play_random_voice():
     play_random_voice()
 
 
-def action_list_voices(ap):
+def action_list_voices():
     info('Available voices:')
     for voice_name in list_voices():
         print(voice_name)
 
 
-def action_tips_dota(ap):
+def action_tips_dota():
     shell('sublime %swar-info/dota-info.md' % WARCRAFT_DIR)
 
 
-def action_tips_age(ap):
+def action_tips_age():
     shell('sublime %sTaunt/cheatsheet.md' % get_aoe2_dir())
 
 
-def action_set_screen_primary(ap):
-    screen_name = ap.poll_next()
+def action_set_screen_primary(screen_name):
     if screen_name:
-        info('setting screen "%s" as primary...' % screen_name)
+        info(f'setting screen "{screen_name}" as primary...')
         set_screen_primary(screen_name)
     else:
-        action_list_screen(ap)
+        action_list_screen()
 
 
-def action_list_screen(ap):
+def action_list_screen():
     info('Available screens:')
     for screenName2, w, h in list_screens():
         print(screenName2)
@@ -209,8 +214,7 @@ def completer_screen_list():
     return list(map(lambda s: s[0], list_screens()))
 
 
-def action_vsync_set(ap):
-    state = ap.poll_next('state')
+def action_vsync_set(state):
     if state == 'on':
         shell('export vblank_mode=3')
         os.environ['vblank_mode'] = '3'
@@ -223,7 +227,7 @@ def action_vsync_set(ap):
         raise CliSyntaxError('unknown state: %s' % state)
 
 
-def action_memory_clear(ap):
+def action_memory_clear():
     info('syncing...')
     shell('sync')
     info('memory (before):')
@@ -234,11 +238,10 @@ def action_memory_clear(ap):
     shell('free -h')
 
 
-def action_memory_watch(ap):
+def action_memory_watch():
     shell('watch -n 1 cat /proc/meminfo')
 
 
-# Age
 def get_aoe2_dir():
 	if os.path.isdir(AOE2_DIR):
 		return AOE2_DIR
@@ -255,7 +258,7 @@ def action_run_aoe2():
     play_wav(os.path.join(script_real_dir(), 'data/stachu-8.wav'))
 
 
-def action_aoe_taunt_list(ap):
+def action_aoe_taunt_list():
     info('Available taunts:')
     taunt_list_file = get_aoe2_dir() + 'Taunt/cheatsheet.md'
     taunts_cheatsheet = read_file(taunt_list_file)
@@ -266,8 +269,7 @@ def completer_taunts_list():
     return list(map(lambda num: str(num), range(1, 43)))
 
 
-def action_aoe_taunt(ap):
-    taunt_number = ap.poll_next()
+def action_aoe_taunt(taunt_number):
     if taunt_number:
         # play selected taunt
         # preceding zero
@@ -276,19 +278,18 @@ def action_aoe_taunt(ap):
         # find taunt by number
         taunts_dir = get_aoe2_dir() + 'Taunt/'
         taunts = list_dir(taunts_dir)
-        taunts = filter_list(lambda file: os.path.isfile(taunts_dir + file), taunts)
-        taunts = filter_list(lambda file: file.startswith(taunt_number), taunts)
-        taunts = filter_list(lambda file: file.endswith('.mp3'), taunts)
+        taunts = list(filter(lambda file: os.path.isfile(taunts_dir + file), taunts))
+        taunts = list(filter(lambda file: file.startswith(taunt_number), taunts))
+        taunts = list(filter(lambda file: file.endswith('.mp3'), taunts))
         if not taunts:
             fatal('Taunt with number %s was not found' % taunt_number)
         if len(taunts) > 1:
             warn('too many taunts found')
         play_mp3(taunts_dir + taunts[0])
     else:  # list available taunts - default
-        action_aoe_taunt_list(ap)
+        action_aoe_taunt_list()
 
 
-# HOMM3
 def get_homm3_dir():
     if os.path.isdir(HOMM3_DIR):
         return HOMM3_DIR
@@ -303,57 +304,55 @@ def action_run_homm3():
     debug('wine error code: %d' % error_code)
 
 
-# ----- Args definitions -----
+
 def main():
     set_workdir(script_real_dir())
 
-    ap = ArgsProcessor(app_name='LichKing tool', version=VERSION)
-    ap.add_subcommand(['war', 'go'], action=action_run_war3, help='run Warcraft3 using wine')
-    ap.add_subcommand(['age', 'aoe'], action=action_run_aoe2, help='run AOE2 using wine')
-    ap.add_subcommand(['heroes', 'homm3'], action=action_run_homm3, help='run HOMM3 using wine')
-
-    ap_test = ap.add_subcommand('test')
-    ap_test.add_subcommand('audio', action=test_sound, help='perform continuous audio test')
-    ap_test.add_subcommand('graphics', action=test_graphics, help='perform graphics tests')
-    ap_test.add_subcommand('network', action=test_network, help='perform network tests')
-    ap_test.add_subcommand('wine', action=test_wine, help='perform wine tests')
-
-    ap_screen = ap.add_subcommand('screen', action=action_set_screen_primary, syntax='[<screenName>]',
-                                  help='set screen as primary', choices=completer_screen_list)
-    ap_screen.add_subcommand('list', action=action_list_screen, help='list available screens')
-    ap_screen.add_subcommand('largest', action=set_largest_screen_primary,
-                             help='automatically set largest screen as primary')
-
-    ap.add_subcommand('network').add_subcommand('noipv6', action=network_disable_ipv6, help='disable IPv6 (IPv4 only)')
-
-    ap.add_subcommand('audio').add_subcommand('select-output', action=select_audio_output_device,
-                                              help='select audio output device')
-
-    ap.add_subcommand('vsync', action=action_vsync_set, syntax='<on|off>', choices=['on', 'off'],
-                      help='enable / disable VSync')
-
-    ap_voice = ap.add_subcommand('voice', action=action_play_voice, syntax='[<voiceName>]',
-                                 help='play selected voice sound', choices=completer_voices_list)
-    ap_voice.add_subcommand('list', action=action_list_voices, help='list available voices')
-    ap_voice.add_subcommand('random', action=action_play_random_voice, help='play random voice sound')
-    ap_voice.add_subcommand('group', action=action_play_voices_group, syntax='<group>',
-                            help='play random voice from a group', choices=['startup', 'war-close', 'war-launch'])
-
-    ap_info = ap.add_subcommand('info')
-    ap_info.add_subcommand('dota', action=action_tips_dota, help='open Dota cheatsheet')
-    ap_info.add_subcommand('age', action=action_tips_age, help='open AOE2 Taunts cheatsheet')
-
-    ap_taunt = ap.add_subcommand('taunt', action=action_aoe_taunt, syntax='[<tauntNumber>]', help='play AOE2 Taunt',
-                                 choices=completer_taunts_list)
-    ap_taunt.add_subcommand('list', action=action_aoe_taunt_list, help='list available AOE2 Taunts')
-
-    ap_memory = ap.add_subcommand('memory')
-    ap_memory.add_subcommand('clear', action=action_memory_clear, help='clear cache / buffer RAM memory')
-    ap_memory.add_subcommand('watch', action=action_memory_watch, help='watch memory cache / buffers / sections size')
-
-    ap.add_subcommand('help', action=print_help, help='display this help and exit')
-
-    ap.process()  # do the magic
+    CliBuilder('lichking', version=VERSION, help='LichKing tool').has(
+        subcommand('war', 'go', run=action_run_war3, help='run Warcraft3 using wine'),
+        subcommand('age', 'aoe', run=action_run_aoe2, help='run AOE2 using wine'),
+        subcommand('heroes', 'homm3', run=action_run_homm3, help='run HOMM3 using wine'),
+        subcommand('test').has(
+            subcommand('audio', run=test_sound, help='perform continuous audio test'),
+            subcommand('graphics', run=test_graphics, help='perform graphics tests'),
+            subcommand('network', run=test_network, help='perform network tests'),
+            subcommand('wine', run=test_wine, help='perform wine tests'),
+        ),
+        subcommand('screen', run=action_set_screen_primary, help='set screen as primary').has(
+            argument('screen_name', required=False, choices=completer_screen_list),
+            subcommand('list', run=action_list_screen, help='list available screens'),
+            subcommand('largest', run=set_largest_screen_primary, help='automatically set largest screen as primary'),
+        ),
+        subcommand('network').has(
+            subcommand('noipv6', run=network_disable_ipv6, help='disable IPv6 (IPv4 only)'),
+        ),
+        subcommand('audio').has(
+            subcommand('select-output', run=select_audio_output_device, help='select audio output device'),
+        ),
+        subcommand('vsync', run=action_vsync_set, help='enable / disable VSync').has(
+            argument('state', choices=['on', 'off']),
+        ),
+        subcommand('voice', run=action_play_voice, help='play selected voice sound').has(
+            argument('voice_name', choices=completer_voices_list, required=False),
+            subcommand('list', run=action_list_voices, help='list available voices'),
+            subcommand('random', run=action_play_random_voice, help='play random voice sound'),
+            subcommand('group', run=action_play_voices_group, help='play random voice from a group').has(
+                argument('group', choices=['startup', 'war-close', 'war-launch']),
+            ),
+        ),
+        subcommand('info').has(
+            subcommand('dota', run=action_tips_dota, help='open Dota cheatsheet'),
+            subcommand('age', run=action_tips_age, help='open AOE2 Taunts cheatsheet'),
+        ),
+        subcommand('taunt', run=action_aoe_taunt, help='play AOE2 Taunt').has(
+                argument('taunt_number', choices=completer_taunts_list, required=False),
+                subcommand('list', run=action_aoe_taunt_list, help='list available AOE2 Taunts'),
+        ),
+        subcommand('memory').has(
+            subcommand('clear', run=action_memory_clear, help='clear cache / buffer RAM memory'),
+            subcommand('watch', run=action_memory_watch, help='watch memory cache / buffers / sections size'),
+        ),
+    ).run()
 
 
 if __name__ == '__main__':
