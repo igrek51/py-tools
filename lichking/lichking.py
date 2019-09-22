@@ -12,9 +12,9 @@ from cliglue.utils.output import info, fatal, error, debug, warn
 from cliglue.utils.input import input_required
 from cliglue import CliBuilder, argument, arguments, flag, parameter, subcommand
 
-WARCRAFT_DIR = '/mnt/usb-data/modules/warcraft-3-pl/'
-AOE2_DIR = '/mnt/usb-data/modules/aoe2/'
-HOMM3_DIR = '/mnt/usb-data/modules/heroes3-hota/'
+WARCRAFT_DIR = '/mnt/watchmodules/warcraft-3-pl/'
+AOE2_DIR = '/mnt/watchmodules/aoe2/'
+HOMM3_DIR = '/mnt/watchmodules/heroes3-hota/'
 VERSION = '1.19.0'
 
 
