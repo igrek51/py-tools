@@ -180,6 +180,15 @@ def showNotification(iconName, summary, body):
 	
 	os.remove(CURRENT_VOLUME_FILE)
 
+def spotify_play():
+	shellExec('dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.PlayPause')
+
+def spotify_next():
+	shellExec('dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Next')
+
+def spotify_previous():
+	shellExec('dbus-send --print-reply --dest=org.mpris.MediaPlayer2.spotify /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Previous')
+
 class Main:
 
 	def __init__(self):
